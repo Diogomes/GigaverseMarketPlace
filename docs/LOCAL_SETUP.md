@@ -56,7 +56,32 @@ npm run dev
 ```
 Abra <http://localhost:5173>. O rodapé mostra **"API conectada"** quando o backend responde (indicador só em dev).
 
-## 6. Testes e verificações
+## 6. Criar o primeiro administrador (uma única vez)
+
+Não existe usuário nem senha padrão. Você define o e-mail e a senha por variáveis de ambiente **só na primeira subida**; o backend cria o ADMIN se ainda não houver nenhum e nunca grava a senha em log.
+
+```powershell
+# PowerShell — na pasta backend, com o JDK 21 configurado
+$env:APP_BOOTSTRAP_ADMIN_EMAIL = 'seu-email@dominio.com'
+$env:APP_BOOTSTRAP_ADMIN_PASSWORD = Read-Host 'Senha do admin (mín. 10 caracteres)' -MaskInput
+$env:APP_BOOTSTRAP_ADMIN_NAME = 'Seu Nome'
+.\mvnw.cmd spring-boot:run
+```
+
+Quando aparecer no log `Administrador inicial criado para …`, pare o backend, **remova as variáveis** e suba de novo:
+
+```powershell
+Remove-Item Env:APP_BOOTSTRAP_ADMIN_EMAIL, Env:APP_BOOTSTRAP_ADMIN_PASSWORD, Env:APP_BOOTSTRAP_ADMIN_NAME
+.\mvnw.cmd spring-boot:run
+```
+
+Depois entre em <http://localhost:5173/entrar> — administradores e operadores vão para `/admin`. Se as variáveis ficarem definidas, nada acontece (já existe ADMIN), mas mantenha-as fora do ambiente.
+
+## 7. E-mails em desenvolvimento
+
+`docker compose up -d` também sobe o **Mailpit**: todos os e-mails (ex.: recuperação de senha) aparecem em <http://localhost:8025>. Nada é enviado para a internet.
+
+## 8. Testes e verificações
 
 ```bash
 cd backend && ./mvnw verify                 # requer Docker (Testcontainers)
@@ -67,6 +92,9 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 
 | Sintoma | Causa / solução |
 |---|---|
+| Login responde 429 | Muitas tentativas na janela de 15 min — aguarde |
+| Login sempre "E-mail ou senha inválidos" após várias tentativas | Conta bloqueada por 15 min após 5 falhas seguidas |
+| Link de redefinição "inválido ou expirado" | Vale 30 min e uma vez; só o link mais recente funciona |
 | `Java 21+ é obrigatório` | Ajuste `JAVA_HOME` (seção 1) |
 | `Connection refused :5432` | `docker compose up -d` e aguarde `healthy` |
 | Testcontainers: `Could not find a valid Docker environment` | Inicie o Docker Desktop |

@@ -3,6 +3,7 @@ import {
   Boxes,
   FileText,
   LayoutDashboard,
+  LogOut,
   Menu,
   Package,
   PanelLeftClose,
@@ -15,8 +16,10 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { Suspense, useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
-import { PreviewRibbon } from '../../components/PreviewGuard'
+import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { initials } from '../../lib/format'
+import { useAuth } from '../../auth/AuthProvider'
+import { DemoRibbon } from '../../components/PreviewGuard'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { cn } from '../../lib/cn'
 
@@ -74,6 +77,8 @@ function SidebarLogo({ collapsed }: { collapsed: boolean }) {
 export function AdminLayout() {
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <div className="flex min-h-dvh">
@@ -119,7 +124,7 @@ export function AdminLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <PreviewRibbon area="área administrativa" />
+        <DemoRibbon area="Painel" />
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-bg/90 px-4 backdrop-blur sm:px-6">
           <button
             type="button"
@@ -147,13 +152,24 @@ export function AdminLayout() {
             <ThemeToggle />
             <div className="flex items-center gap-2">
               <span className="inline-flex size-9 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-accent">
-                AD
+                {initials(user?.fullName ?? '')}
               </span>
               <span className="hidden text-sm leading-tight sm:block">
-                <span className="block font-medium">Administrador</span>
-                <span className="block text-xs text-fg-muted">pré-visualização</span>
+                <span className="block font-medium">{user?.fullName}</span>
+                <span className="block text-xs text-fg-muted">
+                  {user?.role === 'ADMIN' ? 'Administrador' : 'Operador'}
+                </span>
               </span>
             </div>
+            <button
+              type="button"
+              onClick={() => void logout().then(() => navigate('/'))}
+              className="inline-flex size-10 items-center justify-center rounded-lg text-fg-muted hover:bg-surface-muted hover:text-danger"
+              aria-label="Sair"
+              title="Sair"
+            >
+              <LogOut aria-hidden className="size-5" />
+            </button>
           </div>
         </header>
         <main id="admin-conteudo" className="flex-1 p-4 sm:p-6">

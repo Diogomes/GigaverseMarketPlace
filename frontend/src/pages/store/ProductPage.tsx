@@ -5,11 +5,13 @@ import { Badge } from '../../components/ui/Badge'
 import { buttonClass } from '../../components/ui/button'
 import { DemoBanner } from '../../components/ui/DemoBanner'
 import { Notice } from '../../components/ui/Notice'
-import { ProductVisual } from '../../components/ui/ProductVisual'
+import { DemoTag } from '../../components/ui/DemoTag'
+import { ProductMedia } from '../../components/ui/ProductMedia'
 import { PRODUCT_TYPE } from '../../data/labels'
 import { effectivePrice, getCategory, getPublicProduct, listRelatedProducts } from '../../data/store'
 import type { Product } from '../../data/types'
 import { cn } from '../../lib/cn'
+import type { ProductImageVariant } from '../../lib/images'
 import { formatBRL } from '../../lib/format'
 import { NotFoundPage } from '../PlaceholderPage'
 
@@ -39,7 +41,14 @@ function ProductDetail({ product }: { product: Product }) {
   const extra = product.options.reduce((sum, g) => sum + (g.values[selected[g.name] ?? 0].extraCents ?? 0), 0)
   const unit = effectivePrice(product) + extra
   const maxQty = product.type === 'PRONTO' && product.stock > 0 ? product.stock : 10
-  const views = ['Frente', 'Lateral', 'Detalhe', 'Base']
+  // Com imagem: os recortes do asset viram as vistas da galeria; sem imagem, placeholders identificados.
+  const views: Array<{ label: string; variant: ProductImageVariant }> = product.image
+    ? [
+        { label: 'Detalhe', variant: 'detail' },
+        { label: 'Vista ampla', variant: 'card' },
+        { label: 'Enquadramento quadrado', variant: 'square' },
+      ]
+    : ['Frente', 'Lateral', 'Detalhe', 'Base'].map((label) => ({ label, variant: 'square' as const }))
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
@@ -79,7 +88,7 @@ function ProductDetail({ product }: { product: Product }) {
         {/* Galeria */}
         <div className="flex flex-col-reverse gap-3 sm:flex-row">
           <ul className="flex gap-3 sm:flex-col" aria-label="Miniaturas">
-            {views.map((label, i) => (
+            {views.map(({ label, variant }, i) => (
               <li key={label}>
                 <button
                   type="button"
@@ -91,17 +100,30 @@ function ProductDetail({ product }: { product: Product }) {
                     view === i ? 'border-accent' : 'border-transparent opacity-70 hover:opacity-100',
                   )}
                 >
-                  <ProductVisual name={`${product.name} — ${label}`} variant={i} size="xs" className="size-16" />
+                  <ProductMedia
+                    name={`${product.name} — ${label}`}
+                    image={product.image}
+                    variant={variant}
+                    fallbackVariant={i}
+                    fallbackSize="xs"
+                    className="size-16"
+                  />
                 </button>
               </li>
             ))}
           </ul>
-          <ProductVisual
-            name={`${product.name} — ${views[view]}`}
-            variant={view}
-            size="lg"
-            className="aspect-square w-full flex-1 rounded-card"
-          />
+          <div className="relative flex-1">
+            <ProductMedia
+              name={`${product.name} — ${views[view].label}`}
+              image={product.image}
+              variant={views[view].variant}
+              priority
+              fallbackVariant={view}
+              fallbackSize="lg"
+              className="aspect-square w-full rounded-card"
+            />
+            <DemoTag className="absolute left-3 top-3" />
+          </div>
         </div>
 
         {/* Compra */}
@@ -197,7 +219,14 @@ function ProductDetail({ product }: { product: Product }) {
             {related.map((p, i) => (
               <li key={p.id}>
                 <Link to={`/produtos/${p.slug}`} className="group flex items-center gap-3">
-                  <ProductVisual name={p.name} variant={i + 1} size="sm" className="size-16 shrink-0 rounded-lg" />
+                  <ProductMedia
+                    name={p.name}
+                    image={p.image}
+                    variant="square"
+                    fallbackVariant={i + 1}
+                    fallbackSize="sm"
+                    className="size-16 shrink-0 rounded-lg"
+                  />
                   <span>
                     <span className="block text-sm font-medium group-hover:text-accent">{p.name}</span>
                     <span className="block text-sm font-semibold text-accent">{formatBRL(effectivePrice(p))}</span>

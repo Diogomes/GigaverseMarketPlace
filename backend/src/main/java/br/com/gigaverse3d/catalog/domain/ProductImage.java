@@ -53,6 +53,18 @@ public class ProductImage {
 	protected ProductImage() {
 	}
 
+	ProductImage(Product product, String storageKey, String altText, String contentType, int sizeBytes, Integer widthPx,
+			Integer heightPx, int sortOrder) {
+		this.product = product;
+		this.storageKey = storageKey;
+		this.altText = altText;
+		this.contentType = contentType;
+		this.sizeBytes = sizeBytes;
+		this.widthPx = widthPx;
+		this.heightPx = heightPx;
+		this.sortOrder = sortOrder;
+	}
+
 	@PrePersist
 	void onCreate() {
 		createdAt = Instant.now();

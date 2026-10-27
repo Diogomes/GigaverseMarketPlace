@@ -9,7 +9,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { controlClass } from '../../components/ui/Field'
 import { Notice } from '../../components/ui/Notice'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { ProductVisual } from '../../components/ui/ProductVisual'
+import { ProductMedia } from '../../components/ui/ProductMedia'
 import { PRODUCT_STATUS, PRODUCT_TYPE } from '../../data/labels'
 import { getCategory, listAdminProducts, listCategories } from '../../data/store'
 import type { Product, ProductStatus } from '../../data/types'
@@ -122,7 +122,14 @@ export function ProductsPage() {
                 <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-muted/50">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <ProductVisual name={p.name} variant={i} size="xs" className="size-10 shrink-0 rounded-lg" />
+                      <ProductMedia
+                        name={p.name}
+                        image={p.image}
+                        variant="square"
+                        fallbackVariant={i}
+                        fallbackSize="xs"
+                        className="size-10 shrink-0 rounded-lg"
+                      />
                       <div>
                         <p className="font-medium">{p.name}</p>
                         <p className="text-xs text-fg-muted">

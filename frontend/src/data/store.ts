@@ -5,7 +5,7 @@
  */
 import { isoDay } from '../lib/format'
 import { demoAddresses, demoCategories, demoCustomers, demoOrders, demoProducts, DEMO_TODAY } from './demo'
-import type { Address, Category, Customer, Order, Product } from './types'
+import type { Address, Category, Customer, ImageSet, Order, Product } from './types'
 
 export const DEMO_MODE = import.meta.env.DEV
 
@@ -64,6 +64,11 @@ export function listRelatedProducts(product: Product, limit = 3): Product[] {
   const others = listPublicProducts().filter((p) => p.id !== product.id)
   const same = others.filter((p) => p.categorySlug === product.categorySlug)
   return [...same, ...others.filter((p) => p.categorySlug !== product.categorySlug)].slice(0, limit)
+}
+
+/** Imagem do produto referenciado por um item de pedido (snapshot não guarda imagem). */
+export function imageForProduct(slug: string): ImageSet | undefined {
+  return products().find((p) => p.slug === slug)?.image
 }
 
 // --- admin ---

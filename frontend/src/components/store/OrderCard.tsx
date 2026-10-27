@@ -1,10 +1,11 @@
 import { Link } from 'react-router'
 import { ORDER_STATUS } from '../../data/labels'
+import { imageForProduct } from '../../data/store'
 import type { Order } from '../../data/types'
 import { formatBRL, formatDate } from '../../lib/format'
 import { Badge } from '../ui/Badge'
 import { buttonClass } from '../ui/button'
-import { ProductVisual } from '../ui/ProductVisual'
+import { ProductMedia } from '../ui/ProductMedia'
 
 export function OrderCard({ order }: { order: Order }) {
   const status = ORDER_STATUS[order.status]
@@ -18,7 +19,13 @@ export function OrderCard({ order }: { order: Order }) {
         <span className="ml-auto font-semibold">{formatBRL(order.totalCents)}</span>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <ProductVisual name={first.name} size="xs" className="size-12 shrink-0 rounded-lg" />
+        <ProductMedia
+          name={first.name}
+          image={imageForProduct(first.productSlug)}
+          variant="square"
+          fallbackSize="xs"
+          className="size-12 shrink-0 rounded-lg"
+        />
         <div className="min-w-0 flex-1 text-sm">
           <p className="truncate font-medium">{first.name}</p>
           <p className="truncate text-fg-muted">

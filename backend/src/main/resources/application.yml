@@ -11,9 +11,17 @@ spring:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+    properties:
+      hibernate:
+        # Carrega relações LAZY em lote (evita N+1 nas listagens paginadas).
+        default_batch_fetch_size: 50
   flyway:
     enabled: true
     locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 server:
   port: ${SERVER_PORT:8080}
@@ -23,7 +31,10 @@ server:
     include-binding-errors: never
   servlet:
     session:
+      timeout: ${SESSION_TIMEOUT:2h}
+      tracking-modes: cookie
       cookie:
+        name: GV3DSESSION
         http-only: true
         same-site: lax
         secure: ${SESSION_COOKIE_SECURE:true}
@@ -52,3 +63,26 @@ app:
     currency: BRL
     shipping-origin-postal-code: ${APP_SHIPPING_ORIGIN_POSTAL_CODE:53625816}
     payment-methods: PIX,CARD
+  auth:
+    frontend-base-url: ${APP_FRONTEND_BASE_URL:http://localhost:5173}
+    max-failed-logins: 5
+    lock-minutes: 15
+    reset-token-minutes: 30
+  mail:
+    from: ${APP_MAIL_FROM:Gigaverse3D <nao-responda@gigaverse3d.local>}
+  # Primeiro administrador: defina APP_BOOTSTRAP_ADMIN_EMAIL / _PASSWORD / _NAME uma vez (ver LOCAL_SETUP.md).
+  bootstrap-admin:
+    email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
+    name: ${APP_BOOTSTRAP_ADMIN_NAME:Administrador}
+  storage:
+    # local (dev/test) | s3 (produção). Credenciais S3 via cadeia padrão do AWS SDK, nunca aqui.
+    type: ${APP_STORAGE_TYPE:local}
+    local:
+      root-dir: ${APP_STORAGE_LOCAL_ROOT:./storage}
+    s3:
+      bucket: ${APP_STORAGE_S3_BUCKET:}
+      region: ${APP_STORAGE_S3_REGION:}
+      endpoint: ${APP_STORAGE_S3_ENDPOINT:}
+      path-style-access: ${APP_STORAGE_S3_PATH_STYLE:false}
+      public-base-url: ${APP_STORAGE_PUBLIC_BASE_URL:}

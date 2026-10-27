@@ -48,6 +48,15 @@ public class Category extends TimestampedEntity {
 		this.description = description;
 	}
 
+	public void update(String slug, String name, String description, Category parent, int sortOrder, boolean active) {
+		this.slug = slug;
+		this.name = name;
+		this.description = description;
+		this.parent = parent;
+		this.sortOrder = sortOrder;
+		this.active = active;
+	}
+
 	public Long getId() {
 		return id;
 	}

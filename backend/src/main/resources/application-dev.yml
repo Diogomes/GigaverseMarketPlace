@@ -5,6 +5,10 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/gigaverse3d}
     username: ${DB_USERNAME:gigaverse3d}
     password: ${DB_PASSWORD:gigaverse3d_dev}
+  # E-mails vão para o Mailpit local (http://localhost:8025) — nada sai para a internet.
+  mail:
+    host: ${SMTP_HOST:localhost}
+    port: ${SMTP_PORT:1025}
   flyway:
     # Catálogo de demonstração apenas em desenvolvimento (nunca em prod/test).
     locations: classpath:db/migration,classpath:db/seed

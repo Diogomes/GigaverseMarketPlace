@@ -25,6 +25,17 @@ export const registerSchema = z
 
 export const forgotSchema = z.object({ email })
 
+export const resetSchema = z
+  .object({
+    newPassword: z
+      .string()
+      .min(10, { error: 'A senha deve ter pelo menos 10 caracteres.' })
+      .max(128, { error: 'A senha deve ter no máximo 128 caracteres.' }),
+    confirmPassword: z.string(),
+  })
+  .refine((d) => d.newPassword === d.confirmPassword, { error: 'As senhas não conferem.', path: ['confirmPassword'] })
+
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.input<typeof registerSchema>
 export type ForgotInput = z.infer<typeof forgotSchema>
+export type ResetInput = z.infer<typeof resetSchema>

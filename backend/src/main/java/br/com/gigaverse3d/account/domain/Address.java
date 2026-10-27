@@ -81,6 +81,25 @@ public class Address extends TimestampedEntity {
 		this.defaultAddress = value;
 	}
 
+	public void update(String label, String recipientName, String postalCode, String street, String number,
+			String complement, String district, String city, String state) {
+		this.label = label;
+		this.recipientName = recipientName;
+		this.postalCode = postalCode;
+		this.street = street;
+		this.number = number;
+		this.complement = complement;
+		this.district = district;
+		this.city = city;
+		this.state = state;
+	}
+
+	/** Exclusão lógica: pedidos antigos guardam snapshot próprio, então nada depende deste registro. */
+	public void softDelete(Instant now) {
+		this.deletedAt = now;
+		this.defaultAddress = false;
+	}
+
 	public Long getId() {
 		return id;
 	}

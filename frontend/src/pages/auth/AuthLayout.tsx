@@ -26,12 +26,17 @@ export function AuthLayout({ title, subtitle, children }: { title: string; subti
           <div className="mt-6">{children}</div>
         </div>
         <div aria-hidden className="relative hidden flex-col justify-end overflow-hidden bg-[#05070c] p-10 lg:flex">
-          <div className="absolute inset-0 bg-[radial-gradient(70%_60%_at_60%_35%,rgb(47_123_255/0.35),transparent_70%)]" />
+          {/* Imagem ilustrativa do pacote de assets (docs/IMAGE_ASSETS.md). */}
           <img
-            src="/brand/gigaverse-emblem.png"
+            src="/images/products/sci-fi-knight-detail-1200x1200.jpg"
+            width={1200}
+            height={1200}
             alt=""
-            className="absolute left-1/2 top-[38%] w-64 -translate-x-1/2 -translate-y-1/2 mix-blend-screen [mask-image:radial-gradient(closest-side,black_62%,transparent)]"
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover"
           />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/10" />
+          <img src="/brand/gigaverse-emblem.png" alt="" className="relative mb-4 ml-auto size-14 rounded-xl" />
           <p className="relative text-right text-2xl font-semibold leading-snug text-white">
             Mais que impressão 3D,
             <br />é o seu <span className="text-[#4c9bff]">universo.</span>

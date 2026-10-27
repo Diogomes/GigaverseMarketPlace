@@ -1,8 +1,10 @@
 package br.com.gigaverse3d.account.domain;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -65,6 +67,10 @@ public class User extends TimestampedEntity {
 	@Column(name = "deleted_at")
 	private Instant deletedAt;
 
+	/** Muda quando a senha é trocada ou a conta desativada: invalida sessões existentes. */
+	@Column(name = "security_stamp", nullable = false, length = 36)
+	private String securityStamp = UUID.randomUUID().toString();
+
 	@Version
 	private Long version;
 
@@ -80,6 +86,45 @@ public class User extends TimestampedEntity {
 
 	public static String normalizeEmail(String email) {
 		return Objects.requireNonNull(email).strip().toLowerCase(Locale.ROOT);
+	}
+
+	public boolean isLocked(Instant now) {
+		return lockedUntil != null && lockedUntil.isAfter(now);
+	}
+
+	public boolean canLogIn(Instant now) {
+		return status == Status.ACTIVE && deletedAt == null && !isLocked(now);
+	}
+
+	/** Conta a falha; ao atingir o limite, bloqueia temporariamente e zera o contador. */
+	public void recordFailedLogin(int maxAttempts, Duration lockDuration, Instant now) {
+		failedLoginAttempts++;
+		if (failedLoginAttempts >= maxAttempts) {
+			lockedUntil = now.plus(lockDuration);
+			failedLoginAttempts = 0;
+		}
+	}
+
+	public void recordSuccessfulLogin(Instant now) {
+		failedLoginAttempts = 0;
+		lockedUntil = null;
+		lastLoginAt = now;
+	}
+
+	/** Troca o hash da senha e renova o carimbo (derruba as outras sessões). */
+	public void changePassword(String newPasswordHash) {
+		this.passwordHash = Objects.requireNonNull(newPasswordHash);
+		this.failedLoginAttempts = 0;
+		this.lockedUntil = null;
+		rotateSecurityStamp();
+	}
+
+	public void rotateSecurityStamp() {
+		this.securityStamp = UUID.randomUUID().toString();
+	}
+
+	public void updateName(String fullName) {
+		this.fullName = Objects.requireNonNull(fullName).strip();
 	}
 
 	public Long getId() {
@@ -124,6 +169,10 @@ public class User extends TimestampedEntity {
 
 	public Instant getDeletedAt() {
 		return deletedAt;
+	}
+
+	public String getSecurityStamp() {
+		return securityStamp;
 	}
 
 }

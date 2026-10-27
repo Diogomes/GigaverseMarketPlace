@@ -29,6 +29,7 @@ Passo a passo completo (incluindo Windows e `JAVA_HOME`): [docs/LOCAL_SETUP.md](
 
 ## Documentação
 
+- [API](docs/API.md) · [Modelo de dados](docs/DATA_MODEL.md) · [Imagens](docs/IMAGE_ASSETS.md)
 - [Arquitetura](docs/ARCHITECTURE.md) · [Variáveis de ambiente](docs/ENVIRONMENT_VARIABLES.md) · [Setup local](docs/LOCAL_SETUP.md)
 - [Roadmap](docs/ROADMAP.md) · [Decisões](docs/DECISIONS.md) · [Riscos](docs/RISKS.md) · [Auditoria](docs/PROJECT_AUDIT.md)
 - [Referência visual aprovada](docs/design/REFERENCIA-VISUAL-E-ESPECIFICACAO.md) · [Convenções](CONTRIBUTING.md)

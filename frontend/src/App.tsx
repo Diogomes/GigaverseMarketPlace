@@ -1,6 +1,6 @@
 import { lazy, Suspense, type ComponentType } from 'react'
 import { Outlet, Route, Routes } from 'react-router'
-import { PreviewGuard } from './components/PreviewGuard'
+import { RequireAuth } from './components/PreviewGuard'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
 import { HomePage } from './pages/HomePage'
@@ -21,11 +21,12 @@ const AccountOverviewPage = page(accountPages, 'AccountOverviewPage')
 const AccountOrdersPage = page(accountPages, 'AccountOrdersPage')
 const AccountOrderDetailPage = page(accountPages, 'AccountOrderDetailPage')
 const AccountAddressesPage = page(accountPages, 'AccountAddressesPage')
-const AccountProfilePage = page(accountPages, 'AccountProfilePage')
+const AccountProfilePage = page(() => import('./pages/account/ProfilePage'), 'AccountProfilePage')
 const AccountSupportPage = page(accountPages, 'AccountSupportPage')
 const LoginPage = page(() => import('./pages/auth/LoginPage'), 'LoginPage')
 const RegisterPage = page(() => import('./pages/auth/RegisterPage'), 'RegisterPage')
 const ForgotPasswordPage = page(() => import('./pages/auth/ForgotPasswordPage'), 'ForgotPasswordPage')
+const ResetPasswordPage = page(() => import('./pages/auth/ResetPasswordPage'), 'ResetPasswordPage')
 const AdminLayout = page(() => import('./pages/admin/AdminLayout'), 'AdminLayout')
 const AdminPlaceholderPage = page(() => import('./pages/admin/AdminPlaceholderPage'), 'AdminPlaceholderPage')
 const DashboardPage = page(() => import('./pages/admin/DashboardPage'), 'DashboardPage')
@@ -78,12 +79,13 @@ export function App() {
           <Route path="entrar" element={<LoginPage />} />
           <Route path="cadastro" element={<RegisterPage />} />
           <Route path="recuperar-senha" element={<ForgotPasswordPage />} />
+          <Route path="redefinir-senha" element={<ResetPasswordPage />} />
           <Route
             path="conta"
             element={
-              <PreviewGuard>
+              <RequireAuth>
                 <AccountLayout />
-              </PreviewGuard>
+              </RequireAuth>
             }
           >
             <Route index element={<AccountOverviewPage />} />
@@ -99,9 +101,9 @@ export function App() {
         <Route
           path="admin"
           element={
-            <PreviewGuard>
+            <RequireAuth roles={['ADMIN', 'OPERATOR']}>
               <AdminLayout />
-            </PreviewGuard>
+            </RequireAuth>
           }
         >
           <Route index element={<DashboardPage />} />

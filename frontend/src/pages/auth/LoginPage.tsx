@@ -2,25 +2,48 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link } from 'react-router'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
+import { useAuth } from '../../auth/AuthProvider'
 import { buttonClass } from '../../components/ui/button'
 import { InputField } from '../../components/ui/Field'
-import { Notice } from '../../components/ui/Notice'
 import { AuthLayout } from './AuthLayout'
+import { applyApiErrors, safeNext } from './formErrors'
 import { loginSchema, type LoginInput } from './schemas'
 
 export function LoginPage() {
+  const { user, login } = useAuth()
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) })
 
+  const next = safeNext(params.get('next'))
+  if (user) return <Navigate to={next ?? (user.role === 'CUSTOMER' ? '/conta' : '/admin')} replace />
+
+  async function onSubmit(data: LoginInput) {
+    setFormError(null)
+    try {
+      const logged = await login(data.email, data.password)
+      navigate(next ?? (logged.role === 'CUSTOMER' ? '/conta' : '/admin'), { replace: true })
+    } catch (e) {
+      setFormError(applyApiErrors(e, setError, ['email', 'password']))
+    }
+  }
+
   return (
     <AuthLayout title="Bem-vindo de volta!" subtitle="Acesse sua conta para continuar.">
-      <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit(() => setSubmitted(true))}>
+      <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+        {formError && (
+          <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
+            {formError}
+          </p>
+        )}
         <InputField
           id="email"
           label="E-mail"
@@ -55,9 +78,8 @@ export function LoginPage() {
           Esqueceu sua senha?
         </Link>
         <button type="submit" disabled={isSubmitting} className={buttonClass('primary', 'lg')}>
-          Entrar
+          {isSubmitting ? 'Entrando…' : 'Entrar'}
         </button>
-        {submitted && <Notice>O login será habilitado na Fase 05 (autenticação). Nenhum dado foi enviado.</Notice>}
       </form>
       <p className="mt-6 text-center text-sm text-fg-muted">
         Não tem conta?{' '}

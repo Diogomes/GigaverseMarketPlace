@@ -10,7 +10,7 @@ describe('catalog (demo data)', () => {
 
   it('filters by category and search term', () => {
     expect(listPublicProducts({ category: 'decoracao' }).every((p) => p.categorySlug === 'decoracao')).toBe(true)
-    expect(listPublicProducts({ q: 'dragão' }).map((p) => p.slug)).toEqual(['dragao-articulado'])
+    expect(listPublicProducts({ q: 'dragão' }).map((p) => p.slug)).toEqual(['dragao-mecanico-azul'])
   })
 
   it('sorts by effective price', () => {

@@ -1,3 +1,14 @@
 app:
   cors:
     allowed-origins: http://localhost:5173
+  storage:
+    type: local
+    local:
+      root-dir: ${java.io.tmpdir}/gigaverse3d-test-storage
+  auth:
+    rate-limits:
+      # limites altos por IP nos testes (todas as requisições vêm de 127.0.0.1); o teste de 429 usa IP próprio
+      login-per-ip: 10000
+      register-per-ip: 10000
+      forgot-per-ip: 10000
+      forgot-per-email: 10000

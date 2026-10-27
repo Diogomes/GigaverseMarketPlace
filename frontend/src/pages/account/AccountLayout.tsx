@@ -1,6 +1,7 @@
 import { Headset, House, LogOut, MapPin, Package, UserRound, type LucideIcon } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
-import { PreviewRibbon } from '../../components/PreviewGuard'
+import { useAuth } from '../../auth/AuthProvider'
+import { DemoRibbon } from '../../components/PreviewGuard'
 import { cn } from '../../lib/cn'
 
 const LINKS: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
@@ -14,6 +15,7 @@ const LINKS: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean 
 /** Tela 4 da referência: navegação lateral no desktop, abas roláveis no celular. */
 export function AccountLayout() {
   const navigate = useNavigate()
+  const { logout } = useAuth()
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cn(
       'flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
@@ -22,7 +24,7 @@ export function AccountLayout() {
 
   return (
     <>
-      <PreviewRibbon area="área do cliente" />
+      <DemoRibbon area="Minha conta" />
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[15rem_1fr]">
         <aside className="lg:self-start lg:rounded-card lg:border lg:border-border lg:bg-surface lg:p-3 lg:shadow-card">
           <nav aria-label="Minha conta">
@@ -38,7 +40,7 @@ export function AccountLayout() {
               <li className="lg:mt-2 lg:border-t lg:border-border lg:pt-2">
                 <button
                   type="button"
-                  onClick={() => navigate('/')}
+                  onClick={() => void logout().then(() => navigate('/'))}
                   className="flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-danger hover:bg-danger/10"
                 >
                   <LogOut aria-hidden className="size-4" />

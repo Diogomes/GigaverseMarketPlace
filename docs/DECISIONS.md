@@ -54,6 +54,32 @@ Template atual do Vite: React 19, TypeScript 7, Vite 8, **oxlint** (lint) + Pret
 - Gráficos seguem o método dataviz: paleta categórica validada em claro/escuro, "status dos pedidos" como barra empilhada + legenda com valores (em vez da rosca do mockup), tabela alternativa para o gráfico de vendas.
 - Personagens protegidos do mockup não foram usados; imagens de produto são placeholders "Foto pendente".
 
+### D-T14 — Assets de mockup integrados (2026-10-27)
+- Imagens do pacote `assets-mockup` (conceitos originais gerados por IA) copiadas para `frontend/public/images/` e ligadas às telas existentes: hero, categorias, cards, galeria, banners, login, miniaturas de pedidos/admin. Detalhes em `IMAGE_ASSETS.md`.
+- `references-user-supplied/` **não** foi copiada (possível propriedade intelectual de terceiros).
+- O catálogo de demonstração do frontend foi refeito em torno dos 6 conceitos (selo **DEMO**). **Pendência:** o seed do backend (`R__demo_catalog.sql`) ainda tem os nomes anteriores; alinhar na Fase 04, quando o catálogo passar a vir da API com imagens.
+- Hero e banners são arte provisória presente também no build de produção; devem ser trocados antes do lançamento (checklist em `IMAGE_ASSETS.md`).
+
+### D-T16 — Fase 05: autenticação e contas
+- **Sessão no servidor** (cookie `GV3DSESSION`, HttpOnly, SameSite=Lax, Secure em prod, 2 h de inatividade, só por cookie — sem id na URL) + **CSRF** (cookie `XSRF-TOKEN` → header `X-XSRF-TOKEN`) em todas as escritas, inclusive login. Id de sessão trocado no login (session fixation). Nenhum token no `localStorage`.
+- **Senhas:** Argon2id (`{argon2}`; BCrypt aceito para migração), mínimo 10 caracteres, bloqueio de senhas óbvias/iguais ao e-mail (sem regras de composição — NIST 800-63B).
+- **Força bruta:** bloqueio de 15 min após 5 falhas seguidas + limite por IP e por conta (429 com `Retry-After`). Mensagem única "E-mail ou senha inválidos." para todos os casos. Trade-off: um atacante pode bloquear temporariamente uma conta; aceito por ser temporário.
+- **Carimbo de segurança** (`users.security_stamp`, V7): troca de senha/redefinição, desativação ou mudança de papel encerram as sessões antigas na próxima requisição (testado).
+- **Recuperação:** token de 256 bits, só o SHA-256 no banco, 30 min, uso único, apenas o mais recente vale, resposta idêntica para e-mail existente ou não, e-mail de aviso após a troca.
+- **Cadastro:** sempre `CUSTOMER`; campos extras (`role`, `status`) ignorados (testado). Trade-off: e-mail já cadastrado retorna 409 (revela existência no cadastro, não na recuperação); limitado por IP.
+- **Primeiro administrador:** variáveis `APP_BOOTSTRAP_ADMIN_*` na primeira subida; nenhum usuário/senha no código.
+- **Limitações registradas:** sessões e limitador ficam em memória — adequados a **uma instância**; com várias instâncias ou reinícios frequentes, migrar para Spring Session JDBC/Redis (Fase 12). Rotação do token CSRF no login não é feita (o token não é vinculado à sessão; mitigado por SameSite + troca de sessão). E-mail transacional real depende do provedor (D-P05); hoje só Mailpit em dev.
+- **Consentimentos:** versão dos documentos legais registrada como `rascunho-2026-10` até a revisão jurídica (D-P07).
+
+### D-T15 — Fase 04: catálogo, mídia e estoque
+- **Autorização já aplicada no servidor** antes do login existir: `/api/v1/admin/**` exige ADMIN/OPERATOR, `DELETE` só ADMIN, e CSRF em escritas. Testado com usuários simulados; a autenticação real (Fase 05) só precisa fornecer a sessão.
+- **Concorrência:** edição de produto exige `version` (409 em conflito); estoque usa `SELECT … FOR UPDATE` + CHECK no banco — teste com 20 baixas simultâneas sobre saldo 5 termina com exatamente 5 aceitas e saldo 0.
+- **Uploads:** tipo detectado pela assinatura dos bytes (não pelo nome nem pelo Content-Type do cliente), extensão coerente, ≤ 5 MB, ≤ 8000 px (dimensões lidas só do cabeçalho), nome gerado pelo servidor (UUID), servidos com `nosniff` + CSP `sandbox`. Pendência: remover metadados EXIF (ex.: GPS) reprocessando a imagem — avaliar na Fase 10.
+- **Storage S3:** adaptador implementado e testado contra **S3Mock (Adobe)** em container — as imagens oficiais do MinIO deixaram de estar disponíveis no Docker Hub/quay.io sem login. Não foi testado contra nenhum provedor de nuvem (D-P04 pendente).
+- **Busca:** configuração `portuguese_unaccent` (V6) — insensível a acentos e maiúsculas. Limitação conhecida: plurais irregulares (“dragões” × “dragão”) não casam; avaliar busca por trigramas se necessário.
+- **Seed `dev`** alinhado ao catálogo de demonstração do frontend (pendência da D-T14 resolvida). As imagens de demonstração continuam servidas pelo frontend; o seed não cria `product_images`.
+- **Bug corrigido:** URL com UTF-8 inválido retornava 401 (despacho `/error` passava pela segurança); agora 400 — teste com servidor real.
+
 ### D-T12 — Logo no tema claro
 O logo oficial tem fundo preto opaco. Até existir versão transparente (D-P09), é exibido sobre um "chip" escuro em ambos os temas; recortes (emblema/wordmark) foram gerados por redimensionamento, sem distorção.
 

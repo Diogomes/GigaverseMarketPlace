@@ -137,6 +137,49 @@ public class Product extends TimestampedEntity {
 		return status == Status.ACTIVE;
 	}
 
+	/** Atualiza os dados editáveis. Regras entre campos são validadas no serviço e reforçadas pelo banco. */
+	public void updateDetails(String slug, String sku, String name, String description, Category category, Type type,
+			BigDecimal price, BigDecimal promoPrice, Integer productionDays, Integer weightGrams, Integer lengthMm,
+			Integer widthMm, Integer heightMm, boolean featured, String seoTitle, String seoDescription) {
+		this.slug = slug;
+		this.sku = sku;
+		this.name = name;
+		this.description = description;
+		this.category = Objects.requireNonNull(category);
+		this.type = Objects.requireNonNull(type);
+		this.price = Money.normalize(price);
+		setPromoPrice(promoPrice);
+		this.productionDays = productionDays;
+		this.weightGrams = weightGrams;
+		this.lengthMm = lengthMm;
+		this.widthMm = widthMm;
+		this.heightMm = heightMm;
+		this.featured = featured;
+		this.seoTitle = seoTitle;
+		this.seoDescription = seoDescription;
+	}
+
+	public void clearOptions() {
+		options.clear();
+	}
+
+	public ProductImage addImage(String storageKey, String altText, String contentType, int sizeBytes, Integer widthPx,
+			Integer heightPx) {
+		int nextOrder = images.stream().mapToInt(ProductImage::getSortOrder).max().orElse(-1) + 1;
+		ProductImage image = new ProductImage(this, storageKey, altText, contentType, sizeBytes, widthPx, heightPx,
+				nextOrder);
+		images.add(image);
+		return image;
+	}
+
+	public void removeImage(ProductImage image) {
+		images.remove(image);
+	}
+
+	public Long getVersion() {
+		return version;
+	}
+
 	public void setStatus(Status status) {
 		this.status = Objects.requireNonNull(status);
 	}

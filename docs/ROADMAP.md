@@ -5,10 +5,10 @@ Cada fase termina com resumo, comandos executados, resultados reais de testes e 
 | # | Fase | Entregas principais | Depende de decisão do proprietário? | Status |
 |---|---|---|---|---|
 | 01 | Auditoria e plano | `PROJECT_AUDIT.md`, `ROADMAP.md`, `DECISIONS.md`, `RISKS.md` | — | ✅ Aprovada (2026-10-27) |
-| 02 | Arquitetura e fundação | Monorepo, Vite/React, Spring Boot 4 + Java 21, docker-compose (Postgres), `.env.example`, health check, CORS, lint/format, `ARCHITECTURE.md`, `LOCAL_SETUP.md`, `ENVIRONMENT_VARIABLES.md` | Stack aprovada (D-T01, D-T09) | Concluída, aguardando aprovação |
-| 03 | Banco e modelo de dados | Migrations Flyway, entidades, snapshots em pedido, estados, seed só em perfil `dev`, `DATA_MODEL.md` (Mermaid), testes Testcontainers | — | Pendente |
-| 04 | Catálogo e estoque (backend) | APIs públicas/admin de produto e categoria, upload validado, `StorageService` (local/S3), movimentações de estoque com lock, OpenAPI | Armazenamento prod (D-P04) só no deploy | Pendente |
-| 05 | Autenticação e contas | Registro/login/logout, sessão com cookie HttpOnly + CSRF, RBAC, reset de senha, endereços, rate limit, `EmailSender` (dev = log/Mailpit) | E-mail transacional (D-P05) só no deploy | Pendente |
+| 02 | Arquitetura e fundação | Monorepo, Vite/React, Spring Boot 4 + Java 21, docker-compose (Postgres), `.env.example`, health check, CORS, lint/format, `ARCHITECTURE.md`, `LOCAL_SETUP.md`, `ENVIRONMENT_VARIABLES.md` | Stack aprovada (D-T01, D-T09) | ✅ Concluída |
+| 03 | Banco e modelo de dados | Migrations Flyway, entidades, snapshots em pedido, estados, seed só em perfil `dev`, `DATA_MODEL.md` (Mermaid), testes Testcontainers | — | ✅ Concluída |
+| 04 | Catálogo e estoque (backend) | APIs públicas/admin de produto e categoria, upload validado, `StorageService` (local/S3), movimentações de estoque com lock, OpenAPI | Armazenamento prod (D-P04) só no deploy | ✅ Concluída |
+| 05 | Autenticação e contas | Registro/login/logout, sessão com cookie HttpOnly + CSRF, RBAC, reset de senha, endereços, rate limit, `EmailSender` (dev = log/Mailpit) | E-mail transacional (D-P05) só no deploy | ✅ Concluída (130 testes backend + 46 frontend) — aguardando aprovação |
 | 06 | Carrinho, checkout e pedidos | Carrinho, totais no servidor, idempotência, máquina de estados, `PaymentProvider`/`ShippingProvider`, modo **pagamento manual/pendente** | Gateway (D-P01), frete (D-P02), política de troca (D-P06) | Pendente |
 | 07 | Loja pública (frontend) | Design tokens, tema claro/escuro persistido, home, catálogo, produto, carrinho, checkout, páginas institucionais, SEO, Instagram | Logo transparente (D-P09), textos institucionais | Pendente |
 | 08 | Área do cliente | Rotas protegidas, perfil, endereços, pedidos, consentimentos, sessão expirada, testes E2E | — | Pendente |

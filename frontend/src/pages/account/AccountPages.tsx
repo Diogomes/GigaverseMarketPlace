@@ -1,18 +1,24 @@
 import { Check, MapPin, Package, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { useAuth } from '../../auth/AuthProvider'
 import { InstagramLink } from '../../components/InstagramLink'
 import { OrderCard } from '../../components/store/OrderCard'
 import { Badge } from '../../components/ui/Badge'
 import { buttonClass } from '../../components/ui/button'
 import { DemoBanner } from '../../components/ui/DemoBanner'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { InputField } from '../../components/ui/Field'
 import { Notice } from '../../components/ui/Notice'
 import { Card, PageHeader } from '../../components/ui/PageHeader'
-import { ProductVisual } from '../../components/ui/ProductVisual'
+import { ProductMedia } from '../../components/ui/ProductMedia'
 import { ORDER_STATUS } from '../../data/labels'
-import { getCustomer, getCustomerOrder, listAddresses, listCustomerOrders, PREVIEW_CUSTOMER_ID } from '../../data/store'
+import {
+  imageForProduct,
+  getCustomerOrder,
+  listAddresses,
+  listCustomerOrders,
+  PREVIEW_CUSTOMER_ID,
+} from '../../data/store'
 import type { Order } from '../../data/types'
 import { cn } from '../../lib/cn'
 import { formatBRL, formatDate } from '../../lib/format'
@@ -30,11 +36,11 @@ const TABS: Array<{ key: string; label: string; match: (o: Order) => boolean }> 
 ]
 
 export function AccountOverviewPage() {
-  const customer = getCustomer(PREVIEW_CUSTOMER_ID)
+  const { user } = useAuth()
   const orders = listCustomerOrders(PREVIEW_CUSTOMER_ID)
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title={`Olá, ${customer?.name.split(' ')[0] ?? 'cliente'}!`} description="Resumo da sua conta." />
+      <PageHeader title={`Olá, ${user?.fullName.split(' ')[0] ?? 'cliente'}!`} description="Resumo da sua conta." />
       <DemoBanner />
       <div className="grid gap-4 sm:grid-cols-3">
         <Card>
@@ -130,7 +136,14 @@ export function AccountOrderDetailPage() {
           <ul className="mt-4 divide-y divide-border">
             {order.items.map((it, i) => (
               <li key={i} className="flex items-center gap-3 py-3">
-                <ProductVisual name={it.name} variant={i} size="xs" className="size-12 shrink-0 rounded-lg" />
+                <ProductMedia
+                  name={it.name}
+                  image={imageForProduct(it.productSlug)}
+                  variant="square"
+                  fallbackVariant={i}
+                  fallbackSize="xs"
+                  className="size-12 shrink-0 rounded-lg"
+                />
                 <div className="min-w-0 flex-1 text-sm">
                   <p className="font-medium">{it.name}</p>
                   <p className="text-fg-muted">
@@ -231,25 +244,6 @@ export function AccountAddressesPage() {
           ))}
         </div>
       )}
-    </div>
-  )
-}
-
-export function AccountProfilePage() {
-  const customer = getCustomer(PREVIEW_CUSTOMER_ID)
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader title="Meus dados" description="Informações da sua conta." />
-      <DemoBanner />
-      <Card>
-        <form className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
-          <InputField id="name" label="Nome" defaultValue={customer?.name} disabled />
-          <InputField id="email" label="E-mail" defaultValue={customer?.email} disabled />
-          <div className="sm:col-span-2">
-            <Notice>Edição de dados, troca de senha e preferências de comunicação chegam na Fase 05.</Notice>
-          </div>
-        </form>
-      </Card>
     </div>
   )
 }

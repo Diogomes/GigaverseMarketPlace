@@ -6,7 +6,10 @@ export type ProductOptionGroup = {
   values: Array<{ label: string; extraCents?: number }>
 }
 
-export type Category = { slug: string; name: string; description: string }
+/** Conjunto de imagens de demonstração; `base` resolve os recortes em /images (ver lib/images.ts). */
+export type ImageSet = { base: string; alt: string }
+
+export type Category = { slug: string; name: string; description: string; image?: string }
 
 export type Product = {
   id: string
@@ -24,6 +27,7 @@ export type Product = {
   productionDays?: number
   featured: boolean
   options: ProductOptionGroup[]
+  image?: ImageSet
 }
 
 export type OrderStatus = 'AGUARDANDO_PAGAMENTO' | 'EM_PRODUCAO' | 'ENVIADO' | 'ENTREGUE' | 'CANCELADO'
