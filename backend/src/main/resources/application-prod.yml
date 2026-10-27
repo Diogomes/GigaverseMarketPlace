@@ -1,0 +1,5 @@
+# Produção: as variáveis obrigatórias vêm do ambiente/secret manager, sem valores
+# padrão. A aplicação não sobe se faltar DB_URL, DB_USERNAME, DB_PASSWORD ou
+# APP_CORS_ALLOWED_ORIGINS.
+server:
+  forward-headers-strategy: framework

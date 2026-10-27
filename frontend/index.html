@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/brand/favicon-64.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Gigaverse3D — impressão 3D, colecionáveis e peças personalizadas." />
+    <title>Gigaverse3D — Impressão 3D</title>
+    <script>
+      // Aplica o tema salvo antes da renderização para evitar flash de tema errado.
+      try {
+        var t = localStorage.getItem('gv3d-theme')
+        if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

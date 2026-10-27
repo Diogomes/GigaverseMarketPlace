@@ -1,0 +1,26 @@
+# Perfil de desenvolvimento local. Os valores padrão apontam para o docker-compose
+# e NÃO são segredos: o banco local só escuta em 127.0.0.1.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/gigaverse3d}
+    username: ${DB_USERNAME:gigaverse3d}
+    password: ${DB_PASSWORD:gigaverse3d_dev}
+  flyway:
+    # Catálogo de demonstração apenas em desenvolvimento (nunca em prod/test).
+    locations: classpath:db/migration,classpath:db/seed
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: ${SESSION_COOKIE_SECURE:false}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+
+app:
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}

@@ -1,0 +1,13 @@
+package br.com.gigaverse3d.account.repository;
+
+import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import br.com.gigaverse3d.account.domain.User;
+
+public interface UserRepository extends JpaRepository<User, Long> {
+
+	Optional<User> findByEmailAndDeletedAtIsNull(String email);
+
+}

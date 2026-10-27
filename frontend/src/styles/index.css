@@ -1,0 +1,117 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Design tokens Gigaverse3D — derivados do logo oficial e de
+ * docs/design/referencia-visual-gigaverse3d.png.
+ * Cores de ação foram escolhidas para contraste AA com texto branco (≥ 4.5:1).
+ */
+:root,
+[data-theme='light'] {
+  --gv-bg: #f4f6fb;
+  --gv-bg-elevated: #ffffff;
+  --gv-surface: #ffffff;
+  --gv-surface-muted: #eef2f8;
+  --gv-border: #d9e0eb;
+  --gv-text: #0b1a33;
+  --gv-text-muted: #4a5872;
+  --gv-primary: #1f5fe8;
+  --gv-primary-hover: #1a50c7;
+  --gv-on-primary: #ffffff;
+  --gv-accent: #1f5fe8;
+  --gv-silver: #8a93a3;
+  --gv-focus: #1f5fe8;
+  --gv-success: #15803d;
+  --gv-danger: #b91c1c;
+  --gv-shadow: 0 1px 2px rgb(11 26 51 / 0.06), 0 8px 24px rgb(11 26 51 / 0.06);
+  --gv-glow: 0 0 0 transparent;
+  /* Paleta categórica de gráficos (validada: dataviz validate_palette, superfície #ffffff).
+     Contraste < 3:1 em 3 slots → gráficos sempre exibem rótulos/legenda com valores. */
+  --viz-1: #2a78d6;
+  --viz-2: #eb6834;
+  --viz-3: #1baf7a;
+  --viz-4: #eda100;
+  --viz-5: #e87ba4;
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  --gv-bg: #060a13;
+  --gv-bg-elevated: #0a101d;
+  --gv-surface: #0d1526;
+  --gv-surface-muted: #121c31;
+  --gv-border: #1d2a45;
+  --gv-text: #eef3fb;
+  --gv-text-muted: #9aa8c0;
+  --gv-primary: #1f66f0;
+  --gv-primary-hover: #2f7bff;
+  --gv-on-primary: #ffffff;
+  --gv-accent: #4c9bff;
+  --gv-silver: #b8bec6;
+  --gv-focus: #4c9bff;
+  --gv-success: #22c55e;
+  --gv-danger: #f87171;
+  --gv-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 12px 32px rgb(0 0 0 / 0.35);
+  --gv-glow: 0 0 24px rgb(47 123 255 / 0.25);
+  /* Mesmos matizes, degraus escolhidos e validados para a superfície escura #0d1526. */
+  --viz-1: #3987e5;
+  --viz-2: #d95926;
+  --viz-3: #199e70;
+  --viz-4: #c98500;
+  --viz-5: #d55181;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--gv-bg);
+  --color-bg-elevated: var(--gv-bg-elevated);
+  --color-surface: var(--gv-surface);
+  --color-surface-muted: var(--gv-surface-muted);
+  --color-border: var(--gv-border);
+  --color-fg: var(--gv-text);
+  --color-fg-muted: var(--gv-text-muted);
+  --color-primary: var(--gv-primary);
+  --color-primary-hover: var(--gv-primary-hover);
+  --color-on-primary: var(--gv-on-primary);
+  --color-accent: var(--gv-accent);
+  --color-silver: var(--gv-silver);
+  --color-success: var(--gv-success);
+  --color-danger: var(--gv-danger);
+  --color-logo-chip: #05070c;
+  --shadow-card: var(--gv-shadow);
+  --shadow-glow: var(--gv-glow);
+  --radius-card: 0.875rem;
+  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--gv-bg);
+    color: var(--gv-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--gv-bg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--gv-focus);
+    outline-offset: 2px;
+    border-radius: 0.375rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

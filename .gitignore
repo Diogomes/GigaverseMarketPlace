@@ -1,0 +1,18 @@
+# Segredos e configuração local
+.env
+.env.*
+!.env.example
+*.local
+
+# Sistema / editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Uploads locais de desenvolvimento (Fase 04)
+storage/
+
+# Logs
+*.log
