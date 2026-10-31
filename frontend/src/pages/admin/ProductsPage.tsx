@@ -1,35 +1,72 @@
-import { Archive, PackageSearch, Pencil, Plus, Search } from 'lucide-react'
+import { Archive, ArchiveRestore, PackageSearch, Pencil, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router'
+import {
+  useAdminCategories,
+  useAdminProducts,
+  useCatalogActions,
+  type AdminProductListItem,
+  type ProductStatus,
+} from '../../api/admin'
+import { apiGet } from '../../lib/api'
+import type { AdminProduct } from '../../api/admin'
+import {
+  ActionError,
+  errorMessage,
+  FilterSelect,
+  Loading,
+  Pagination,
+  QueryError,
+  rowClass,
+  SearchInput,
+  tableWrapClass,
+  theadClass,
+} from '../../components/admin/AdminUi'
+import { PRODUCT_STATUS_UI, PRODUCT_TYPE_UI } from '../../components/admin/labels'
 import { Badge } from '../../components/ui/Badge'
+import { CatalogImage } from '../../components/ui/CatalogImage'
 import { buttonClass } from '../../components/ui/button'
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog'
-import { DemoBanner } from '../../components/ui/DemoBanner'
 import { EmptyState } from '../../components/ui/EmptyState'
-import { controlClass } from '../../components/ui/Field'
 import { Notice } from '../../components/ui/Notice'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { ProductMedia } from '../../components/ui/ProductMedia'
-import { PRODUCT_STATUS, PRODUCT_TYPE } from '../../data/labels'
-import { getCategory, listAdminProducts, listCategories } from '../../data/store'
-import type { Product, ProductStatus } from '../../data/types'
-import { formatBRL } from '../../lib/format'
+import { formatPrice } from '../../lib/format'
+import { useDebounced } from '../../lib/useDebounced'
 
 /** Tela 7 da referência. */
 export function ProductsPage() {
   const [q, setQ] = useState('')
-  const [category, setCategory] = useState('')
+  const [categoryId, setCategoryId] = useState('')
   const [status, setStatus] = useState<ProductStatus | ''>('')
-  const [archiving, setArchiving] = useState<Product | null>(null)
+  const [page, setPage] = useState(0)
+  const [target, setTarget] = useState<AdminProductListItem | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
+  const [failure, setFailure] = useState<string | null>(null)
+  const search = useDebounced(q.trim())
+  const categories = useAdminCategories()
+  const { data, error, isPending, refetch } = useAdminProducts({
+    q: search || undefined,
+    categoryId: categoryId ? Number(categoryId) : undefined,
+    status: status || undefined,
+    page,
+    size: 20,
+  })
+  const actions = useCatalogActions()
+  const archiving = target?.status !== 'ARCHIVED'
 
-  const term = q.trim().toLowerCase()
-  const products = listAdminProducts().filter(
-    (p) =>
-      (!term || p.name.toLowerCase().includes(term) || p.sku.toLowerCase().includes(term)) &&
-      (!category || p.categorySlug === category) &&
-      (!status || p.status === status),
-  )
+  async function toggleArchive(p: AdminProductListItem) {
+    setTarget(null)
+    setFailure(null)
+    try {
+      // a versão vem do detalhe atual: se outra pessoa editou, o servidor responde 409
+      const current = await apiGet<AdminProduct>(`/api/v1/admin/products/${p.id}`)
+      const next: ProductStatus = p.status === 'ARCHIVED' ? 'ACTIVE' : 'ARCHIVED'
+      await actions.changeStatus(p.id, next, current.version)
+      setNotice(next === 'ARCHIVED' ? `"${p.name}" foi arquivado.` : `"${p.name}" está ativo na loja.`)
+    } catch (e) {
+      setFailure(errorMessage(e))
+    }
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -42,157 +79,178 @@ export function ProductsPage() {
           </Link>
         }
       />
-      <DemoBanner />
       {notice && <Notice>{notice}</Notice>}
+      <ActionError message={failure} />
 
       <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
-        <label className="relative">
-          <span className="sr-only">Buscar produto por nome ou SKU</span>
-          <Search aria-hidden className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-fg-muted" />
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Buscar por nome ou SKU…"
-            className={`${controlClass} h-10 pl-9`}
-          />
-        </label>
-        <label>
-          <span className="sr-only">Categoria</span>
-          <select value={category} onChange={(e) => setCategory(e.target.value)} className={`${controlClass} h-10`}>
-            <option value="">Todas as categorias</option>
-            {listCategories().map((c) => (
-              <option key={c.slug} value={c.slug}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          <span className="sr-only">Status</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as ProductStatus | '')}
-            className={`${controlClass} h-10`}
-          >
-            <option value="">Todos os status</option>
-            {Object.entries(PRODUCT_STATUS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <SearchInput
+          value={q}
+          onChange={(v) => {
+            setQ(v)
+            setPage(0)
+          }}
+          label="Buscar produto por nome ou SKU"
+          placeholder="Buscar por nome ou SKU…"
+        />
+        <FilterSelect
+          label="Categoria"
+          value={categoryId}
+          onChange={(v) => {
+            setCategoryId(v)
+            setPage(0)
+          }}
+        >
+          <option value="">Todas as categorias</option>
+          {categories.data?.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </FilterSelect>
+        <FilterSelect
+          label="Status"
+          value={status}
+          onChange={(v) => {
+            setStatus(v as ProductStatus | '')
+            setPage(0)
+          }}
+        >
+          <option value="">Todos os status</option>
+          {Object.entries(PRODUCT_STATUS_UI).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v.label}
+            </option>
+          ))}
+        </FilterSelect>
       </div>
 
-      {products.length === 0 ? (
+      {error ? (
+        <QueryError error={error} onRetry={() => void refetch()} />
+      ) : isPending ? (
+        <Loading />
+      ) : data.content.length === 0 ? (
         <EmptyState
           icon={PackageSearch}
           title="Nenhum produto encontrado"
           description="Ajuste a busca ou os filtros."
         />
       ) : (
-        <div className="overflow-x-auto rounded-card border border-border bg-surface shadow-card">
-          <table className="w-full min-w-[48rem] text-sm">
-            <caption className="sr-only">Lista de produtos</caption>
-            <thead className="border-b border-border text-left text-xs uppercase tracking-wide text-fg-muted">
-              <tr>
-                <th scope="col" className="px-4 py-3 font-medium">
-                  Produto
-                </th>
-                <th scope="col" className="px-4 py-3 font-medium">
-                  Categoria
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">
-                  Preço
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">
-                  Estoque
-                </th>
-                <th scope="col" className="px-4 py-3 font-medium">
-                  Status
-                </th>
-                <th scope="col" className="px-4 py-3 text-right font-medium">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((p, i) => (
-                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-muted/50">
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <ProductMedia
-                        name={p.name}
-                        image={p.image}
-                        variant="square"
-                        fallbackVariant={i}
-                        fallbackSize="xs"
-                        className="size-10 shrink-0 rounded-lg"
-                      />
-                      <div>
-                        <p className="font-medium">{p.name}</p>
-                        <p className="text-xs text-fg-muted">
-                          {p.sku} · {PRODUCT_TYPE[p.type]}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-fg-muted">{getCategory(p.categorySlug)?.name}</td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {formatBRL(p.promoPriceCents ?? p.priceCents)}
-                    {p.promoPriceCents && (
-                      <span className="block text-xs text-fg-muted line-through">{formatBRL(p.priceCents)}</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-right tabular-nums">
-                    {p.type === 'PRONTO' ? (
-                      <span className={p.stock <= p.lowStockThreshold ? 'font-semibold text-danger' : ''}>
-                        {p.stock}
-                      </span>
-                    ) : (
-                      <span className="text-fg-muted">—</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge tone={PRODUCT_STATUS[p.status].tone}>{PRODUCT_STATUS[p.status].label}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-1">
-                      <Link
-                        to={`/admin/produtos/${p.id}`}
-                        className={buttonClass('ghost', 'sm', 'size-9 px-0')}
-                        aria-label={`Editar ${p.name}`}
-                      >
-                        <Pencil aria-hidden className="size-4" />
-                      </Link>
-                      <button
-                        type="button"
-                        className={buttonClass('ghost', 'sm', 'size-9 px-0')}
-                        aria-label={`Arquivar ${p.name}`}
-                        onClick={() => setArchiving(p)}
-                      >
-                        <Archive aria-hidden className="size-4" />
-                      </button>
-                    </div>
-                  </td>
+        <>
+          <div className={tableWrapClass}>
+            <table className="w-full min-w-[48rem] text-sm">
+              <caption className="sr-only">Lista de produtos</caption>
+              <thead className={theadClass}>
+                <tr>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Produto
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Categoria
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">
+                    Preço
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">
+                    Estoque
+                  </th>
+                  <th scope="col" className="px-4 py-3 font-medium">
+                    Status
+                  </th>
+                  <th scope="col" className="px-4 py-3 text-right font-medium">
+                    Ações
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {data.content.map((p, i) => (
+                  <tr key={p.id} className={rowClass}>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <CatalogImage
+                          slug={p.slug}
+                          name={p.name}
+                          image={p.imageUrl ? { id: 0, url: p.imageUrl, alt: '', width: null, height: null } : null}
+                          variant="square"
+                          fallbackVariant={i}
+                          fallbackSize="xs"
+                          className="size-10 shrink-0 rounded-lg"
+                        />
+                        <div>
+                          <p className="font-medium">{p.name}</p>
+                          <p className="text-xs text-fg-muted">
+                            {p.sku} · {PRODUCT_TYPE_UI[p.type]}
+                          </p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-fg-muted">{p.categoryName}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {formatPrice(p.promoPrice ?? p.price)}
+                      {p.promoPrice !== null && (
+                        <span className="block text-xs text-fg-muted line-through">{formatPrice(p.price)}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right tabular-nums">
+                      {p.type === 'READY' ? (
+                        <span className={p.lowStock ? 'font-semibold text-danger' : ''}>
+                          {p.stockOnHand}
+                          {p.lowStock && <span className="sr-only"> (estoque baixo)</span>}
+                        </span>
+                      ) : (
+                        <span className="text-fg-muted">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge tone={PRODUCT_STATUS_UI[p.status].tone}>{PRODUCT_STATUS_UI[p.status].label}</Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-1">
+                        <Link
+                          to={`/admin/produtos/${p.id}`}
+                          className={buttonClass('ghost', 'sm', 'size-9 px-0')}
+                          aria-label={`Editar ${p.name}`}
+                        >
+                          <Pencil aria-hidden className="size-4" />
+                        </Link>
+                        <button
+                          type="button"
+                          className={buttonClass('ghost', 'sm', 'size-9 px-0')}
+                          aria-label={p.status === 'ARCHIVED' ? `Reativar ${p.name}` : `Arquivar ${p.name}`}
+                          onClick={() => setTarget(p)}
+                        >
+                          {p.status === 'ARCHIVED' ? (
+                            <ArchiveRestore aria-hidden className="size-4" />
+                          ) : (
+                            <Archive aria-hidden className="size-4" />
+                          )}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <Pagination
+            page={data.page}
+            totalPages={data.totalPages}
+            totalElements={data.totalElements}
+            onPage={setPage}
+          />
+        </>
       )}
 
       <ConfirmDialog
-        open={archiving !== null}
-        title="Arquivar produto?"
-        description={`"${archiving?.name ?? ''}" deixará de aparecer na loja, mas continuará no histórico de pedidos. Você pode reativá-lo depois.`}
-        confirmLabel="Arquivar"
-        onCancel={() => setArchiving(null)}
-        onConfirm={() => {
-          setArchiving(null)
-          setNotice('Arquivamento será salvo quando a API de catálogo estiver disponível (Fase 04). Nada foi alterado.')
-        }}
+        open={target !== null}
+        title={archiving ? 'Arquivar produto?' : 'Reativar produto?'}
+        description={
+          archiving
+            ? `"${target?.name ?? ''}" deixará de aparecer na loja, mas continuará no histórico de pedidos. Você pode reativá-lo depois.`
+            : `"${target?.name ?? ''}" voltará a aparecer na loja.`
+        }
+        confirmLabel={archiving ? 'Arquivar' : 'Reativar'}
+        onCancel={() => setTarget(null)}
+        onConfirm={() => target && void toggleArchive(target)}
       />
     </div>
   )

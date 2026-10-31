@@ -123,6 +123,23 @@ public class User extends TimestampedEntity {
 		this.securityStamp = UUID.randomUUID().toString();
 	}
 
+	/** Mudança de papel encerra as sessões abertas (o filtro de carimbo também confere o papel). */
+	public void changeRole(Role newRole) {
+		this.role = Objects.requireNonNull(newRole);
+		rotateSecurityStamp();
+	}
+
+	public void disable() {
+		this.status = Status.DISABLED;
+		rotateSecurityStamp();
+	}
+
+	public void enable() {
+		this.status = Status.ACTIVE;
+		this.failedLoginAttempts = 0;
+		this.lockedUntil = null;
+	}
+
 	public void updateName(String fullName) {
 		this.fullName = Objects.requireNonNull(fullName).strip();
 	}

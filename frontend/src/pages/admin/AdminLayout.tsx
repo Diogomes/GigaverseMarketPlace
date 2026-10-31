@@ -5,10 +5,12 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  History,
   Package,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  ShieldCheck,
   ShoppingBag,
   Tags,
   Users,
@@ -19,11 +21,10 @@ import { Suspense, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { initials } from '../../lib/format'
 import { useAuth } from '../../auth/AuthProvider'
-import { DemoRibbon } from '../../components/PreviewGuard'
 import { ThemeToggle } from '../../components/ThemeToggle'
 import { cn } from '../../lib/cn'
 
-const ADMIN_LINKS: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
+const ADMIN_LINKS: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean; adminOnly?: boolean }> = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
   { to: '/admin/pedidos', label: 'Pedidos', icon: ShoppingBag },
   { to: '/admin/produtos', label: 'Produtos', icon: Package },
@@ -33,13 +34,18 @@ const ADMIN_LINKS: Array<{ to: string; label: string; icon: LucideIcon; end?: bo
   { to: '/admin/conteudo', label: 'Conteúdo', icon: FileText },
   { to: '/admin/relatorios', label: 'Relatórios', icon: BarChart3 },
   { to: '/admin/configuracoes', label: 'Configurações', icon: Settings },
+  { to: '/admin/equipe', label: 'Equipe', icon: ShieldCheck, adminOnly: true },
+  { to: '/admin/auditoria', label: 'Auditoria', icon: History, adminOnly: true },
 ]
 
 function SidebarNav({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const { user } = useAuth()
+  // esconder o link é só conveniência: o servidor recusa (403) quem não é ADMIN
+  const links = ADMIN_LINKS.filter((l) => !l.adminOnly || user?.role === 'ADMIN')
   return (
     <nav aria-label="Administração">
       <ul className="flex flex-col gap-1">
-        {ADMIN_LINKS.map(({ to, label, icon: Icon, end }) => (
+        {links.map(({ to, label, icon: Icon, end }) => (
           <li key={to}>
             <NavLink
               to={to}
@@ -124,7 +130,6 @@ export function AdminLayout() {
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <DemoRibbon area="Painel" />
         <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-bg/90 px-4 backdrop-blur sm:px-6">
           <button
             type="button"

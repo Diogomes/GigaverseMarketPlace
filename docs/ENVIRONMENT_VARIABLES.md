@@ -15,6 +15,15 @@ Nunca versionar `.env`. Em produção, usar o secret manager da hospedagem (deci
 | `SESSION_COOKIE_SECURE` | não (padrão `true`) | `false` | Cookie de sessão só via HTTPS |
 | `APP_SHIPPING_ORIGIN_POSTAL_CODE` | não | `53625816` | CEP de origem dos envios (8 dígitos, validado) |
 
+### Pedidos, pagamento e frete
+
+| Variável | Obrigatória | Padrão | Descrição |
+|---|---|---|---|
+| `APP_PAYMENTS_PROVIDER` | não | `MANUAL` | Provedor de pagamento. Só `MANUAL` existe (pedido aguarda confirmação do admin); gateway real depende de D-P01 |
+| `APP_ORDERS_PENDING_EXPIRATION` | não | `PT72H` | Prazo (ISO-8601) para pedido não pago expirar e devolver o estoque |
+| `APP_SHIPPING_PICKUP_ENABLED` | não | `true` | Oferece retirada no checkout |
+| `APP_SHIPPING_ZONES_<n>_*` (`NAME`, `FROM_POSTAL_CODE`, `TO_POSTAL_CODE`, `PRICE`, `MIN_DAYS`, `MAX_DAYS`) | não | nenhuma | Faixas de entrega por intervalo de CEP (vale a primeira que casar). **Sem faixas, só a retirada é oferecida.** O perfil `dev` traz valores **fictícios** (PE 15,00 · Nordeste 25,00 · demais 39,00) que não valem em produção (D-P02) |
+
 ### Autenticação e e-mail
 
 | Variável | Obrigatória | Padrão | Descrição |

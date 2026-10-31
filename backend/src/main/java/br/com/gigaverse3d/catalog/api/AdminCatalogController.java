@@ -33,6 +33,7 @@ import br.com.gigaverse3d.catalog.api.CatalogDtos.AdminProductListItem;
 import br.com.gigaverse3d.catalog.api.CatalogDtos.AdminProductResponse;
 import br.com.gigaverse3d.catalog.api.CatalogDtos.CategoryRequest;
 import br.com.gigaverse3d.catalog.api.CatalogDtos.ProductRequest;
+import br.com.gigaverse3d.catalog.api.CatalogDtos.ProductStatusRequest;
 import br.com.gigaverse3d.catalog.domain.Product;
 import br.com.gigaverse3d.catalog.service.CategoryAdminService;
 import br.com.gigaverse3d.catalog.service.ProductAdminService;
@@ -100,11 +101,13 @@ public class AdminCatalogController {
 			@RequestParam(required = false) @Size(max = 100) String q,
 			@RequestParam(required = false) Long categoryId,
 			@RequestParam(required = false) Product.Status status,
+			@RequestParam(required = false) Product.Type type,
+			@RequestParam(defaultValue = "false") boolean lowStock,
 			@RequestParam(defaultValue = "0") @Min(0) int page,
 			@RequestParam(defaultValue = "20") @Min(1) @Max(PageResponse.MAX_PAGE_SIZE) int size,
 			@RequestParam(defaultValue = "updatedAt") String sort,
 			@RequestParam(defaultValue = "DESC") Sort.Direction direction) {
-		return products.list(q, categoryId, status, page, size, sort, direction);
+		return products.list(q, categoryId, status, type, lowStock, page, size, sort, direction);
 	}
 
 	@Operation(summary = "Detalhe administrativo do produto (inclui estoque e versão)")
@@ -124,6 +127,12 @@ public class AdminCatalogController {
 	@PutMapping("/products/{id}")
 	public AdminProductResponse updateProduct(@PathVariable Long id, @Valid @RequestBody ProductRequest req) {
 		return products.update(id, req);
+	}
+
+	@Operation(summary = "Arquiva, ativa ou volta a rascunho (exige a versão lida; auditado)")
+	@PostMapping("/products/{id}/status")
+	public AdminProductResponse changeStatus(@PathVariable Long id, @Valid @RequestBody ProductStatusRequest req) {
+		return products.changeStatus(id, req.status(), req.version());
 	}
 
 	@Operation(summary = "Exclui produto sem pedidos (somente ADMIN); com pedidos, arquive")

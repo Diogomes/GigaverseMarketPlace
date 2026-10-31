@@ -1,8 +1,7 @@
-import { FlaskConical, ShieldAlert } from 'lucide-react'
+import { ShieldAlert } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, Navigate, useLocation } from 'react-router'
-import { useAuth, type Role } from '../auth/AuthProvider'
-import { DEMO_MODE } from '../data/store'
+import { SESSION_EXPIRED_FLAG, useAuth, type Role } from '../auth/AuthProvider'
 import { buttonClass } from './ui/button'
 
 /**
@@ -22,7 +21,13 @@ export function RequireAuth({ roles, children }: { roles?: Role[]; children: Rea
   }
   if (!user) {
     const next = encodeURIComponent(location.pathname + location.search)
-    return <Navigate to={`/entrar?next=${next}`} replace />
+    let expired = false
+    try {
+      expired = sessionStorage.getItem(SESSION_EXPIRED_FLAG) === '1'
+    } catch {
+      // ignora
+    }
+    return <Navigate to={`/entrar?next=${next}${expired ? '&expirada=1' : ''}`} replace />
   }
   if (roles && !roles.includes(user.role)) {
     return (
@@ -37,15 +42,4 @@ export function RequireAuth({ roles, children }: { roles?: Role[]; children: Rea
     )
   }
   return children
-}
-
-/** Faixa de aviso nas áreas que ainda exibem dados de demonstração (pedidos, métricas, CRM). */
-export function DemoRibbon({ area }: { area: string }) {
-  if (!DEMO_MODE) return null
-  return (
-    <p className="flex items-center gap-2 border-b border-amber-500/40 bg-amber-500/10 px-4 py-1.5 text-xs text-amber-800 dark:text-amber-200">
-      <FlaskConical aria-hidden className="size-3.5 shrink-0" />
-      {area}: sessão real; pedidos, métricas e clientes exibidos ainda são de demonstração (APIs nas Fases 06–09).
-    </p>
-  )
 }

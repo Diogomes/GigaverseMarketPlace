@@ -1,57 +1,130 @@
 import { Clock, Minus, PackageCheck, Plus, ShieldCheck, ShoppingCart, Truck } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { useProduct, useProducts } from '../../api/catalog'
+import type { ProductDetail } from '../../api/types'
+import { useCart } from '../../cart/CartProvider'
+import { AVAILABILITY } from '../../components/store/availability'
 import { Badge } from '../../components/ui/Badge'
 import { buttonClass } from '../../components/ui/button'
+import { CatalogImage } from '../../components/ui/CatalogImage'
 import { DemoBanner } from '../../components/ui/DemoBanner'
-import { Notice } from '../../components/ui/Notice'
 import { DemoTag } from '../../components/ui/DemoTag'
-import { ProductMedia } from '../../components/ui/ProductMedia'
-import { PRODUCT_TYPE } from '../../data/labels'
-import { effectivePrice, getCategory, getPublicProduct, listRelatedProducts } from '../../data/store'
-import type { Product } from '../../data/types'
+import { Notice } from '../../components/ui/Notice'
+import { ApiError } from '../../lib/api'
 import { cn } from '../../lib/cn'
+import { formatPrice } from '../../lib/format'
 import type { ProductImageVariant } from '../../lib/images'
-import { formatBRL } from '../../lib/format'
+import { JsonLd } from '../../components/JsonLd'
+import { usePageMeta } from '../../lib/seo'
 import { NotFoundPage } from '../PlaceholderPage'
 
-function availability(p: Product) {
-  if (p.type === 'PERSONALIZADO') return { tone: 'accent' as const, label: 'Sob orçamento' }
-  if (p.type === 'SOB_ENCOMENDA' || p.stock === 0) return { tone: 'warning' as const, label: 'Sob encomenda' }
-  return { tone: 'success' as const, label: 'Em estoque' }
-}
+const SCHEMA_AVAILABILITY = {
+  IN_STOCK: 'https://schema.org/InStock',
+  OUT_OF_STOCK: 'https://schema.org/OutOfStock',
+  MADE_TO_ORDER: 'https://schema.org/PreOrder',
+  ON_REQUEST: 'https://schema.org/PreOrder',
+} as const
 
-/** Tela 2 da referência visual. */
+/** Tela 2 da referência. */
 export function ProductPage() {
   const { slug = '' } = useParams()
-  const product = getPublicProduct(slug)
-  if (!product) return <NotFoundPage />
-  return <ProductDetail key={product.id} product={product} />
+  const { data, isPending, error } = useProduct(slug)
+  if (isPending) {
+    return (
+      <p role="status" className="px-4 py-24 text-center text-sm text-fg-muted">
+        Carregando produto…
+      </p>
+    )
+  }
+  if (error instanceof ApiError && error.status === 404) return <NotFoundPage />
+  if (!data) {
+    return (
+      <div className="mx-auto max-w-xl px-4 py-24">
+        <Notice>Não foi possível carregar o produto. Tente novamente em instantes.</Notice>
+      </div>
+    )
+  }
+  return <ProductDetailView key={data.slug} product={data} />
 }
 
-function ProductDetail({ product }: { product: Product }) {
+function ProductDetailView({ product }: { product: ProductDetail }) {
+  const { add } = useCart()
   const [view, setView] = useState(0)
-  const [selected, setSelected] = useState<Record<string, number>>({})
+  // um valor por grupo de opção (o primeiro já vem escolhido)
+  const [selected, setSelected] = useState<Record<string, number>>(() =>
+    Object.fromEntries(product.options.map((g) => [g.name, g.values[0]?.id])),
+  )
   const [quantity, setQuantity] = useState(1)
-  const [notice, setNotice] = useState(false)
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null)
+  const [adding, setAdding] = useState(false)
+  usePageMeta(product.seoTitle ?? product.name, product.seoDescription ?? product.description)
 
-  const category = getCategory(product.categorySlug)
-  const related = listRelatedProducts(product)
-  const status = availability(product)
-  const extra = product.options.reduce((sum, g) => sum + (g.values[selected[g.name] ?? 0].extraCents ?? 0), 0)
-  const unit = effectivePrice(product) + extra
-  const maxQty = product.type === 'PRONTO' && product.stock > 0 ? product.stock : 10
-  // Com imagem: os recortes do asset viram as vistas da galeria; sem imagem, placeholders identificados.
-  const views: Array<{ label: string; variant: ProductImageVariant }> = product.image
-    ? [
-        { label: 'Detalhe', variant: 'detail' },
-        { label: 'Vista ampla', variant: 'card' },
-        { label: 'Enquadramento quadrado', variant: 'square' },
+  const { data: relatedPage } = useProducts({ category: product.categorySlug, size: 4 })
+  const related = (relatedPage?.content ?? []).filter((p) => p.slug !== product.slug).slice(0, 3)
+
+  const status = AVAILABILITY[product.availability]
+  const extra = product.options.reduce(
+    (sum, g) => sum + (g.values.find((v) => v.id === selected[g.name])?.priceDelta ?? 0),
+    0,
+  )
+  const unit = product.effectivePrice + extra
+  const purchasable = product.availability === 'IN_STOCK' || product.availability === 'MADE_TO_ORDER'
+  const maxQty = product.availability === 'MADE_TO_ORDER' ? 10 : 99
+
+  const views: Array<{ label: string; variant: ProductImageVariant; imageIndex: number }> = product.images.length
+    ? product.images.map((img, i) => ({ label: img.alt || `Foto ${i + 1}`, variant: 'detail', imageIndex: i }))
+    : [
+        { label: 'Detalhe', variant: 'detail', imageIndex: -1 },
+        { label: 'Vista ampla', variant: 'card', imageIndex: -1 },
+        { label: 'Enquadramento quadrado', variant: 'square', imageIndex: -1 },
       ]
-    : ['Frente', 'Lateral', 'Detalhe', 'Base'].map((label) => ({ label, variant: 'square' as const }))
+  const current = views[view] ?? views[0]
+
+  async function addToCart() {
+    setAdding(true)
+    setMessage(null)
+    try {
+      const optionValueIds = Object.values(selected).filter((v): v is number => typeof v === 'number')
+      await add({
+        productSlug: product.slug,
+        optionValueIds,
+        quantity,
+        name: product.name,
+        unitPrice: unit,
+        optionsLabel:
+          product.options
+            .map((g) => `${g.name}: ${g.values.find((v) => v.id === selected[g.name])?.label ?? ''}`)
+            .join(' · ') || null,
+      })
+      setMessage({ ok: true, text: 'Adicionado ao carrinho.' })
+    } catch (e) {
+      setMessage({
+        ok: false,
+        text: e instanceof ApiError ? (e.fieldErrors[0]?.message ?? e.message) : 'Não foi possível adicionar.',
+      })
+    } finally {
+      setAdding(false)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: product.name,
+          description: product.description,
+          image: product.images.map((i) => i.url),
+          offers: {
+            '@type': 'Offer',
+            priceCurrency: 'BRL',
+            price: product.effectivePrice.toFixed(2),
+            availability: SCHEMA_AVAILABILITY[product.availability],
+          },
+        }}
+      />
       <nav aria-label="Trilha de navegação" className="text-sm text-fg-muted">
         <ol className="flex flex-wrap gap-1">
           <li>
@@ -66,14 +139,12 @@ function ProductDetail({ product }: { product: Product }) {
             </Link>{' '}
             /
           </li>
-          {category && (
-            <li>
-              <Link to={`/produtos?categoria=${category.slug}`} className="text-accent hover:underline">
-                {category.name}
-              </Link>{' '}
-              /
-            </li>
-          )}
+          <li>
+            <Link to={`/produtos?categoria=${product.categorySlug}`} className="text-accent hover:underline">
+              {product.categoryName}
+            </Link>{' '}
+            /
+          </li>
           <li aria-current="page" className="text-fg">
             {product.name}
           </li>
@@ -81,29 +152,29 @@ function ProductDetail({ product }: { product: Product }) {
       </nav>
 
       <div className="mt-4">
-        <DemoBanner>Produto fictício para visualizar o layout.</DemoBanner>
+        <DemoBanner>Produto do catálogo de demonstração (imagem ilustrativa).</DemoBanner>
       </div>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)_18rem]">
-        {/* Galeria */}
         <div className="flex flex-col-reverse gap-3 sm:flex-row">
           <ul className="flex gap-3 sm:flex-col" aria-label="Miniaturas">
-            {views.map(({ label, variant }, i) => (
-              <li key={label}>
+            {views.map((v, i) => (
+              <li key={v.label + i}>
                 <button
                   type="button"
                   onClick={() => setView(i)}
-                  aria-label={`Ver imagem: ${label}`}
+                  aria-label={`Ver imagem: ${v.label}`}
                   aria-pressed={view === i}
                   className={cn(
                     'block overflow-hidden rounded-lg border-2',
                     view === i ? 'border-accent' : 'border-transparent opacity-70 hover:opacity-100',
                   )}
                 >
-                  <ProductMedia
-                    name={`${product.name} — ${label}`}
-                    image={product.image}
-                    variant={variant}
+                  <CatalogImage
+                    slug={product.slug}
+                    name={`${product.name} — ${v.label}`}
+                    image={v.imageIndex >= 0 ? product.images[v.imageIndex] : null}
+                    variant={v.variant}
                     fallbackVariant={i}
                     fallbackSize="xs"
                     className="size-16"
@@ -113,10 +184,11 @@ function ProductDetail({ product }: { product: Product }) {
             ))}
           </ul>
           <div className="relative flex-1">
-            <ProductMedia
-              name={`${product.name} — ${views[view].label}`}
-              image={product.image}
-              variant={views[view].variant}
+            <CatalogImage
+              slug={product.slug}
+              name={`${product.name} — ${current.label}`}
+              image={current.imageIndex >= 0 ? product.images[current.imageIndex] : null}
+              variant={current.variant}
               priority
               fallbackVariant={view}
               fallbackSize="lg"
@@ -126,33 +198,31 @@ function ProductDetail({ product }: { product: Product }) {
           </div>
         </div>
 
-        {/* Compra */}
         <div>
           <h1 className="text-3xl font-bold">{product.name}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Badge tone={status.tone}>{status.label}</Badge>
-            {product.type !== 'PRONTO' && <Badge>{PRODUCT_TYPE[product.type]}</Badge>}
           </div>
           <p className="mt-4 flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-accent">{formatBRL(unit)}</span>
-            {product.promoPriceCents && (
-              <span className="text-fg-muted line-through">{formatBRL(product.priceCents + extra)}</span>
+            <span className="text-3xl font-bold text-accent">{formatPrice(unit)}</span>
+            {product.promoPrice !== null && (
+              <span className="text-fg-muted line-through">{formatPrice(product.price + extra)}</span>
             )}
           </p>
-          {product.type === 'PERSONALIZADO' && (
+          {product.type === 'CUSTOM' && (
             <p className="mt-1 text-sm text-fg-muted">Valor de referência; o preço final é definido no orçamento.</p>
           )}
-          <p className="mt-4 text-fg-muted">{product.description}</p>
+          <p className="mt-4 whitespace-pre-line text-fg-muted">{product.description}</p>
 
           {product.options.map((group) => (
             <fieldset key={group.name} className="mt-6">
               <legend className="text-sm font-semibold">{group.name}</legend>
               <div className="mt-2 flex flex-wrap gap-2">
-                {group.values.map((v, i) => {
-                  const active = (selected[group.name] ?? 0) === i
+                {group.values.map((v) => {
+                  const active = selected[group.name] === v.id
                   return (
                     <label
-                      key={v.label}
+                      key={v.id}
                       className={cn(
                         'cursor-pointer rounded-lg border px-4 py-2 text-sm font-medium transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-accent',
                         active ? 'border-accent bg-primary text-on-primary' : 'border-border hover:bg-surface-muted',
@@ -163,10 +233,10 @@ function ProductDetail({ product }: { product: Product }) {
                         name={group.name}
                         className="sr-only"
                         checked={active}
-                        onChange={() => setSelected((s) => ({ ...s, [group.name]: i }))}
+                        onChange={() => setSelected((s) => ({ ...s, [group.name]: v.id }))}
                       />
                       {v.label}
-                      {v.extraCents ? ` (+${formatBRL(v.extraCents)})` : ''}
+                      {v.priceDelta > 0 ? ` (+${formatPrice(v.priceDelta)})` : ''}
                     </label>
                   )
                 })}
@@ -174,52 +244,70 @@ function ProductDetail({ product }: { product: Product }) {
             </fieldset>
           ))}
 
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <div className="flex items-center rounded-lg border border-border" role="group" aria-label="Quantidade">
+          {purchasable ? (
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="flex items-center rounded-lg border border-border" role="group" aria-label="Quantidade">
+                <button
+                  type="button"
+                  className="inline-flex size-11 items-center justify-center text-fg-muted hover:text-fg disabled:opacity-40"
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  disabled={quantity <= 1}
+                  aria-label="Diminuir quantidade"
+                >
+                  <Minus aria-hidden className="size-4" />
+                </button>
+                <output className="w-10 text-center font-semibold" aria-live="polite">
+                  {quantity}
+                </output>
+                <button
+                  type="button"
+                  className="inline-flex size-11 items-center justify-center text-fg-muted hover:text-fg disabled:opacity-40"
+                  onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
+                  disabled={quantity >= maxQty}
+                  aria-label="Aumentar quantidade"
+                >
+                  <Plus aria-hidden className="size-4" />
+                </button>
+              </div>
               <button
                 type="button"
-                className="inline-flex size-11 items-center justify-center text-fg-muted hover:text-fg disabled:opacity-40"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                disabled={quantity <= 1}
-                aria-label="Diminuir quantidade"
+                className={buttonClass('primary', 'lg', 'flex-1')}
+                onClick={() => void addToCart()}
+                disabled={adding}
               >
-                <Minus aria-hidden className="size-4" />
-              </button>
-              <output className="w-10 text-center font-semibold" aria-live="polite">
-                {quantity}
-              </output>
-              <button
-                type="button"
-                className="inline-flex size-11 items-center justify-center text-fg-muted hover:text-fg disabled:opacity-40"
-                onClick={() => setQuantity((q) => Math.min(maxQty, q + 1))}
-                disabled={quantity >= maxQty}
-                aria-label="Aumentar quantidade"
-              >
-                <Plus aria-hidden className="size-4" />
+                <ShoppingCart aria-hidden className="size-5" />
+                {adding ? 'Adicionando…' : 'Adicionar ao carrinho'}
               </button>
             </div>
-            <button type="button" className={buttonClass('primary', 'lg', 'flex-1')} onClick={() => setNotice(true)}>
-              <ShoppingCart aria-hidden className="size-5" />
-              {product.type === 'PERSONALIZADO' ? 'Solicitar orçamento' : 'Adicionar ao carrinho'}
-            </button>
-          </div>
-          {notice && (
-            <div className="mt-4">
-              <Notice>O carrinho e o checkout serão habilitados na Fase 06. Nenhum pedido foi criado.</Notice>
-            </div>
+          ) : product.type === 'CUSTOM' ? (
+            <Link to="/personalizados" className={buttonClass('primary', 'lg', 'mt-6')}>
+              Solicitar orçamento
+            </Link>
+          ) : (
+            <p className="mt-6 text-sm text-fg-muted">Produto esgotado no momento.</p>
+          )}
+          {message && (
+            <p role="status" className={cn('mt-4 text-sm', message.ok ? 'text-success' : 'text-danger')}>
+              {message.text}{' '}
+              {message.ok && (
+                <Link to="/carrinho" className="font-semibold text-accent underline">
+                  Ver carrinho
+                </Link>
+              )}
+            </p>
           )}
         </div>
 
-        {/* Relacionados */}
         <aside aria-labelledby="relacionados" className="rounded-card border border-border bg-surface p-4 shadow-card">
           <h2 id="relacionados" className="font-semibold">
             Também pode te interessar
           </h2>
           <ul className="mt-4 flex flex-col gap-4">
             {related.map((p, i) => (
-              <li key={p.id}>
+              <li key={p.slug}>
                 <Link to={`/produtos/${p.slug}`} className="group flex items-center gap-3">
-                  <ProductMedia
+                  <CatalogImage
+                    slug={p.slug}
                     name={p.name}
                     image={p.image}
                     variant="square"
@@ -229,11 +317,12 @@ function ProductDetail({ product }: { product: Product }) {
                   />
                   <span>
                     <span className="block text-sm font-medium group-hover:text-accent">{p.name}</span>
-                    <span className="block text-sm font-semibold text-accent">{formatBRL(effectivePrice(p))}</span>
+                    <span className="block text-sm font-semibold text-accent">{formatPrice(p.effectivePrice)}</span>
                   </span>
                 </Link>
               </li>
             ))}
+            {related.length === 0 && <li className="text-sm text-fg-muted">Sem outros itens nesta categoria.</li>}
           </ul>
         </aside>
       </div>
@@ -244,18 +333,19 @@ function ProductDetail({ product }: { product: Product }) {
       >
         <Info icon={Clock} title="Produção">
           {product.productionDays
-            ? `Produzido após a confirmação do pedido, em até ${product.productionDays} dias úteis.`
+            ? `Produzido após a confirmação do pagamento, em até ${product.productionDays} dias úteis.`
             : 'Item pronto para envio após a confirmação do pagamento.'}
         </Info>
         <Info icon={Truck} title="Envio">
-          Prazo e valor do frete são calculados no checkout pelo CEP de entrega (em configuração).
+          Entrega conforme o CEP (calculada no checkout) ou retirada combinada com a equipe.
         </Info>
         <Info icon={PackageCheck} title="Cuidados">
           Evite exposição prolongada ao sol e a fontes de calor. Limpe com pano seco e macio.
         </Info>
       </section>
       <p className="mt-6 flex items-center gap-2 text-xs text-fg-muted">
-        <ShieldCheck aria-hidden className="size-4" /> Pagamento via PIX e cartão — integração em configuração.
+        <ShieldCheck aria-hidden className="size-4" /> PIX ou cartão — cobrança enviada pela equipe após o pedido;
+        nenhum dado de cartão é coletado neste site.
       </p>
     </div>
   )

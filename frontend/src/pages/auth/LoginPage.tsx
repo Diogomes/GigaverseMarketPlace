@@ -3,7 +3,8 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, Navigate, useNavigate, useSearchParams } from 'react-router'
-import { useAuth } from '../../auth/AuthProvider'
+import { SESSION_EXPIRED_FLAG, useAuth } from '../../auth/AuthProvider'
+import { Notice } from '../../components/ui/Notice'
 import { buttonClass } from '../../components/ui/button'
 import { InputField } from '../../components/ui/Field'
 import { AuthLayout } from './AuthLayout'
@@ -29,6 +30,11 @@ export function LoginPage() {
   async function onSubmit(data: LoginInput) {
     setFormError(null)
     try {
+      sessionStorage.removeItem(SESSION_EXPIRED_FLAG)
+    } catch {
+      // ignora
+    }
+    try {
       const logged = await login(data.email, data.password)
       navigate(next ?? (logged.role === 'CUSTOMER' ? '/conta' : '/admin'), { replace: true })
     } catch (e) {
@@ -39,6 +45,9 @@ export function LoginPage() {
   return (
     <AuthLayout title="Bem-vindo de volta!" subtitle="Acesse sua conta para continuar.">
       <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
+        {params.get('expirada') && !formError && (
+          <Notice>Sua sessão expirou ou foi encerrada. Entre novamente para continuar.</Notice>
+        )}
         {formError && (
           <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             {formError}

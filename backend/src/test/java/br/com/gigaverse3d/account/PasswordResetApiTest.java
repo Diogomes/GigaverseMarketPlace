@@ -133,7 +133,7 @@ class PasswordResetApiTest extends PostgresIntegrationTest {
 		reset(token, "curta").andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.errors[0].field").value("newPassword"));
 		reset(token, NEW_PASSWORD).andExpect(status().isOk());
-		mvc.perform(get("/api/v1/auth/me").session(session)).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/auth/me").session(session)).andExpect(status().isNoContent());
 	}
 
 }

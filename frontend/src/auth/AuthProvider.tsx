@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createContext, useCallback, useContext, useMemo, type ReactNode } from 'react'
-import { apiGet, apiSend, ApiError } from '../lib/api'
+import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from 'react'
+import { apiGet, apiSend, ApiError, SESSION_EXPIRED_EVENT } from '../lib/api'
 
 export type Role = 'CUSTOMER' | 'OPERATOR' | 'ADMIN'
 export type SessionUser = { id: number; email: string; fullName: string; role: Role }
@@ -24,11 +24,13 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 const ME_KEY = ['auth', 'me']
+export const SESSION_EXPIRED_FLAG = 'gv3d-session-expired'
 
 /** Sessão vem do cookie HttpOnly no servidor; o frontend só consulta /auth/me. */
 async function fetchMe(): Promise<SessionUser | null> {
   try {
-    return await apiGet<SessionUser>('/api/v1/auth/me')
+    // 204 (sem sessão) chega como corpo vazio
+    return (await apiGet<SessionUser | null>('/api/v1/auth/me')) ?? null
   } catch (e) {
     if (e instanceof ApiError && (e.status === 401 || e.status === 403)) return null
     throw e
@@ -40,6 +42,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data, isPending } = useQuery({ queryKey: ME_KEY, queryFn: fetchMe, retry: false, staleTime: 60_000 })
 
   const setUser = useCallback((user: SessionUser | null) => queryClient.setQueryData(ME_KEY, user), [queryClient])
+
+  // Sessão perdida no servidor (expirou, senha trocada em outro lugar…): limpa o estado local.
+  useEffect(() => {
+    const onExpired = () => {
+      if (!queryClient.getQueryData(ME_KEY)) return
+      try {
+        sessionStorage.setItem(SESSION_EXPIRED_FLAG, '1')
+      } catch {
+        // sem armazenamento: apenas redireciona
+      }
+      setUser(null)
+      queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth' && q.queryKey[0] !== 'catalog' })
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, onExpired)
+    return () => window.removeEventListener(SESSION_EXPIRED_EVENT, onExpired)
+  }, [queryClient, setUser])
 
   const login = useCallback(
     async (email: string, password: string) => {

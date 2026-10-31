@@ -9,6 +9,8 @@ import java.util.stream.Collectors;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.Root;
+import jakarta.persistence.criteria.Subquery;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -74,8 +76,8 @@ public class ProductAdminService {
 	}
 
 	@Transactional(readOnly = true)
-	public PageResponse<AdminProductListItem> list(String q, Long categoryId, Product.Status status, int page,
-			int size, String sortField, Sort.Direction direction) {
+	public PageResponse<AdminProductListItem> list(String q, Long categoryId, Product.Status status, Product.Type type,
+			boolean lowStock, int page, int size, String sortField, Sort.Direction direction) {
 		Specification<Product> spec = (root, query, cb) -> {
 			List<Predicate> predicates = new ArrayList<>();
 			if (StringUtils.hasText(q)) {
@@ -88,6 +90,19 @@ public class ProductAdminService {
 			}
 			if (status != null) {
 				predicates.add(cb.equal(root.get("status"), status));
+			}
+			if (type != null) {
+				predicates.add(cb.equal(root.get("type"), type));
+			}
+			if (lowStock) {
+				// pronta entrega com disponível (em estoque − reservado) ≤ mínimo
+				Subquery<Long> low = query.subquery(Long.class);
+				Root<InventoryItem> item = low.from(InventoryItem.class);
+				low.select(item.get("productId"))
+					.where(cb.le(cb.diff(item.<Integer>get("quantityOnHand"), item.<Integer>get("quantityReserved")),
+							item.<Integer>get("lowStockThreshold")));
+				predicates.add(cb.equal(root.get("type"), Product.Type.READY));
+				predicates.add(root.get("id").in(low));
 			}
 			return cb.and(predicates.toArray(Predicate[]::new));
 		};
@@ -150,6 +165,22 @@ public class ProductAdminService {
 		audit.record("PRODUCT_UPDATED", "product", id,
 				Map.of("sku", product.getSku(), "statusFrom", previous.name(), "statusTo", product.getStatus().name()));
 		return mapper.admin(product, stock);
+	}
+
+	/** Arquivar/ativar/voltar a rascunho sem reenviar o produto inteiro (confere a versão lida). */
+	public AdminProductResponse changeStatus(Long id, Product.Status status, Long version) {
+		Product product = find(id);
+		if (!version.equals(product.getVersion())) {
+			throw new ConflictException("O produto foi alterado por outra pessoa. Recarregue e tente novamente.");
+		}
+		Product.Status previous = product.getStatus();
+		if (previous != status) {
+			product.setStatus(status);
+			products.flush();
+			audit.record("PRODUCT_STATUS_CHANGED", "product", id,
+					Map.of("sku", product.getSku(), "statusFrom", previous.name(), "statusTo", status.name()));
+		}
+		return mapper.admin(product, inventory.findById(id).orElse(null));
 	}
 
 	/** Exclusão física só sem histórico de pedidos; caso contrário, arquivar. */

@@ -147,6 +147,11 @@ public class Order extends TimestampedEntity {
 		return item;
 	}
 
+	public void setCustomerNote(String customerNote) {
+		requireEditable();
+		this.customerNote = customerNote;
+	}
+
 	public void setShippingTotal(BigDecimal shippingTotal) {
 		requireEditable();
 		this.shippingTotal = Money.normalize(shippingTotal);

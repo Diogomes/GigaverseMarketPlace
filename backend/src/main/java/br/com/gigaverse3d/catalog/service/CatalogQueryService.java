@@ -47,10 +47,10 @@ public class CatalogQueryService {
 		return categories.findByActiveTrueOrderBySortOrderAscNameAsc().stream().map(mapper::category).toList();
 	}
 
-	public PageResponse<ProductSummaryResponse> search(String q, String category, Product.Type type, String sort,
-			int page, int size) {
+	public PageResponse<ProductSummaryResponse> search(String q, String category, Product.Type type, Boolean featured,
+			String sort, int page, int size) {
 		Page<Product> result = products.searchPublic(StringUtils.hasText(q) ? q.strip() : null,
-				StringUtils.hasText(category) ? category : null, type == null ? null : type.name(),
+				StringUtils.hasText(category) ? category : null, type == null ? null : type.name(), featured,
 				StringUtils.hasText(sort) ? sort : "relevance", PageRequest.of(page, size));
 		// Estoque da página inteira em uma consulta (evita N+1).
 		Map<Long, InventoryItem> stock = inventory

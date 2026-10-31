@@ -111,7 +111,7 @@ class AccountApiTest extends PostgresIntegrationTest {
 		send(put("/api/v1/account/password"), userA, Map.of("currentPassword", PASSWORD, "newPassword",
 				"Nova-Senha-Segura-31")).andExpect(status().isOk());
 		mvc.perform(get("/api/v1/auth/me").session(userA)).andExpect(status().isOk());
-		mvc.perform(get("/api/v1/auth/me").session(otherDevice)).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/auth/me").session(otherDevice)).andExpect(status().isNoContent());
 	}
 
 	// --- endereços

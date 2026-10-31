@@ -80,6 +80,32 @@ Template atual do Vite: React 19, TypeScript 7, Vite 8, **oxlint** (lint) + Pret
 - **Seed `dev`** alinhado ao catálogo de demonstração do frontend (pendência da D-T14 resolvida). As imagens de demonstração continuam servidas pelo frontend; o seed não cria `product_images`.
 - **Bug corrigido:** URL com UTF-8 inválido retornava 401 (despacho `/error` passava pela segurança); agora 400 — teste com servidor real.
 
+### D-T17 — Fases 06 a 08: carrinho, checkout, pedidos, loja e área do cliente
+- **Preço só no servidor:** `Pricing` é a única fonte de preço (produto + opções + promoção). O cliente envia `expectedTotal`; se o servidor calcular outro valor, o checkout responde 409 e a tela mostra o novo total.
+- **Checkout idempotente:** header `Idempotency-Key` por tentativa; repetir a requisição devolve o mesmo pedido.
+- **Estoque:** reservado no checkout com lock pessimista em ordem fixa de produto; devolvido no cancelamento e na expiração (72 h). Teste com 8 compradores simultâneos pela última unidade → exatamente 1 pedido.
+- **Pagamento manual** (`MANUAL`) enquanto D-P01 estiver pendente: pedido nasce "Aguardando pagamento" e só ADMIN confirma; nenhum dado de cartão é coletado. O contrato `PaymentProvider` + webhook (HMAC, idempotência por evento, conferência de valor) está pronto e testado com um provedor de teste.
+- **Frete:** retirada + faixas por intervalo de CEP configuráveis; sem faixas em produção só há retirada. Valores do perfil `dev` são fictícios (D-P02).
+- **Carrinho do visitante** no `localStorage` (só a seleção, sem dados pessoais), enviado no login. A junção é **idempotente no servidor** (maior quantidade, não soma) — corrigiu um bug real em que recarregar a página durante o envio duplicava as quantidades.
+- **`/auth/me` responde 204 sem sessão** (antes 401), eliminando erro no console de todo visitante. Em rotas protegidas, um 401 inesperado mostra "sua sessão expirou" e volta ao login preservando o destino (`next` validado contra open redirect).
+- **Loja pública:** home, catálogo (busca na URL), produto (opções, JSON-LD), carrinho, checkout e páginas institucionais (**rascunho**) consomem a API. Imagens de demonstração por slug só no modo DEV; o bundle de produção não contém dados de demonstração (verificado no build).
+- **Área do cliente:** pedidos com abas e paginação, detalhe com histórico, instruções e cancelamento, endereços, perfil e troca de senha. Pedido de outra pessoa → 404 (testado no backend, no frontend e no E2E).
+- **E2E:** Playwright com o Edge instalado (sem baixar navegadores). 3 fluxos: compra completa + cancelamento, logout, isolamento entre clientes e admin.
+- **Ainda com dados de demonstração:** telas de admin e CRM (Fase 09).
+
+### D-T18 — Fase 09: painel administrativo, CRM e auditoria
+- **Métricas no banco, não no navegador:** `DashboardService` agrega com SQL (índices V8 em `paid_at`/`placed_at`). Venda = pagamento confirmado (`paid_at`), fuso America/Recife; brutas incluem pedidos cancelados após pagamento, líquidas excluem esses e o frete. Definições e limitações em `METRICS.md`; testes com valores conhecidos, inclusive na virada do dia (UTC × Recife). **Proposta para D-P12 — aguarda confirmação.**
+- **Gráfico de etapas:** os 7 status da API foram agrupados em 5 etapas para usar só as 5 cores já validadas da paleta (sem gerar cores novas).
+- **Privilégio mínimo:** OPERATOR opera pedidos, catálogo, estoque e CRM. Só ADMIN confirma pagamento, exclui (notas, etiquetas, imagens, categorias, produtos), **exporta**, vê a **auditoria** e gerencia a **equipe** — regras em `SecurityConfig`, testadas por papel em `AdminAccessTest` (cliente → 403 em todas as rotas; anônimo → 401).
+- **Equipe por convite:** o ADMIN informa nome/e-mail/papel; a senha nunca passa pelo administrador (link de 48 h com o mesmo token de uso único da recuperação). Ninguém altera o próprio papel/status; mudança de papel ou desativação encerra as sessões (carimbo de segurança). Clientes não viram equipe pela API (contas separadas). A regra "manter ao menos 1 ADMIN ativo" trava as linhas (`FOR UPDATE`); com o bloqueio de auto-alteração ela é defesa em profundidade.
+- **CRM sem dados excessivos:** lista sem telefone/endereço; perfil mostra só o necessário (inclui o aceite de marketing, para saber se pode ofertar). Segmentos derivados apenas dos pedidos (sem compra, recorrentes, 90+ dias sem comprar). Origem do cadastro não é exibida (não é coletada). A tela orienta a não registrar dados sensíveis em notas/etiquetas.
+- **Auditoria sem conteúdo pessoal:** notas registram só id e tamanho; exportações registram filtros e quantidade de linhas, não o texto buscado.
+- **Exportações:** CSV pt-BR (`;`, decimal com vírgula, BOM), anexo `no-store`, máx. 5000 linhas — acima disso a API **recusa** (409) em vez de cortar em silêncio. Células de texto iniciadas por `= + - @` recebem apóstrofo (injeção de fórmula).
+- **Concorrência:** arquivar/ativar exige a `version` lida (409 se outra pessoa alterou).
+- **Configurações:** tela somente leitura; mudanças operacionais continuam por variável de ambiente + deploy (rastreável). Editor de conteúdo/banners ficou fora do escopo (tela informa).
+- **Dados de demonstração:** pedidos, clientes e métricas fictícios do frontend foram removidos; o painel só mostra dados da API. Permanece apenas o catálogo de demonstração usado para imagens por slug em desenvolvimento (D-T14).
+- **Pendências:** E2E do fluxo administrativo (precisa de conta ADMIN no banco de desenvolvimento) fica para a Fase 11; sessões/limitador seguem em memória (uma instância — D-T16).
+
 ### D-T12 — Logo no tema claro
 O logo oficial tem fundo preto opaco. Até existir versão transparente (D-P09), é exibido sobre um "chip" escuro em ambos os temas; recortes (emblema/wordmark) foram gerados por redimensionamento, sem distorção.
 

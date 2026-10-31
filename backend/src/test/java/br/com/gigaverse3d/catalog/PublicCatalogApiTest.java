@@ -24,6 +24,9 @@ class PublicCatalogApiTest extends PostgresIntegrationTest {
 	@Autowired
 	CatalogFixtures fixtures;
 
+	@Autowired
+	org.springframework.jdbc.core.JdbcTemplate jdbc;
+
 	String cat;
 
 	Product cheap;
@@ -110,6 +113,22 @@ class PublicCatalogApiTest extends PostgresIntegrationTest {
 	void draftNeverAppearsInListings() throws Exception {
 		mvc.perform(get("/api/v1/public/products").param("q", "Rascunho Secreto"))
 			.andExpect(jsonPath("$.content[*].slug").value(not(hasItem(draft.getSlug()))));
+	}
+
+	@Test
+	void filtersFeatured() throws Exception {
+		jdbc.update("UPDATE products SET featured = true WHERE id = ?", cheap.getId());
+		mvc.perform(get("/api/v1/public/products").param("category", cat).param("featured", "true"))
+			.andExpect(jsonPath("$.content[*].slug").value(contains(cheap.getSlug())));
+	}
+
+	@Test
+	void sitemapListsOnlyActiveProducts() throws Exception {
+		String xml = mvc.perform(get("/sitemap.xml")).andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString();
+		org.assertj.core.api.Assertions.assertThat(xml)
+			.contains("<urlset", "/produtos/" + cheap.getSlug(), "/produtos?categoria=" + cat)
+			.doesNotContain(draft.getSlug());
 	}
 
 	@Test

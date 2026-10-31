@@ -162,7 +162,7 @@ class AuthApiTest extends PostgresIntegrationTest {
 		mvc.perform(get("/api/v1/auth/me").session(session)).andExpect(status().isOk());
 		mvc.perform(post("/api/v1/auth/logout").session(session).with(csrf())).andExpect(status().isNoContent());
 		assertThat(session.isInvalid()).isTrue();
-		mvc.perform(get("/api/v1/auth/me")).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/auth/me")).andExpect(status().isNoContent());
 	}
 
 	// --- autorização por papel
@@ -190,7 +190,7 @@ class AuthApiTest extends PostgresIntegrationTest {
 		mvc.perform(get("/api/v1/auth/me").session(session)).andExpect(status().isOk());
 
 		jdbc.update("UPDATE users SET status = 'DISABLED' WHERE email = ?", email);
-		mvc.perform(get("/api/v1/auth/me").session(session)).andExpect(status().isUnauthorized());
+		mvc.perform(get("/api/v1/auth/me").session(session)).andExpect(status().isNoContent());
 		login(mvc, json, new MockHttpSession(), email, PASSWORD).andExpect(status().isUnauthorized());
 	}
 

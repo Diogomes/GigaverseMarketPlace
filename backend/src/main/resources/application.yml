@@ -75,6 +75,16 @@ app:
     email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}
     password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
     name: ${APP_BOOTSTRAP_ADMIN_NAME:Administrador}
+  payments:
+    # MANUAL até a escolha do gateway (D-P01): nenhuma cobrança automática nem coleta de cartão.
+    provider: ${APP_PAYMENTS_PROVIDER:MANUAL}
+  orders:
+    pending-expiration: ${APP_ORDERS_PENDING_EXPIRATION:PT72H}
+    expiration-check-interval: PT15M
+  shipping:
+    pickup:
+      enabled: ${APP_SHIPPING_PICKUP_ENABLED:true}
+    # Sem faixas configuradas, só a retirada é oferecida. Valores reais de frete: decisão D-P02.
   storage:
     # local (dev/test) | s3 (produção). Credenciais S3 via cadeia padrão do AWS SDK, nunca aqui.
     type: ${APP_STORAGE_TYPE:local}

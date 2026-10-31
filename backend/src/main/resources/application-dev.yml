@@ -26,5 +26,12 @@ springdoc:
     enabled: true
 
 app:
+  shipping:
+    # TABELA DE EXEMPLO (dev) — valores fictícios, exibidos como "valores de demonstração".
+    demo-values: true
+    zones:
+      - { name: "Pernambuco", from-postal-code: "50000000", to-postal-code: "56999999", price: 15.00, min-days: 2, max-days: 4 }
+      - { name: "Nordeste", from-postal-code: "40000000", to-postal-code: "65999999", price: 25.00, min-days: 4, max-days: 8 }
+      - { name: "Demais regiões", from-postal-code: "00000000", to-postal-code: "99999999", price: 39.00, min-days: 6, max-days: 12 }
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}

@@ -4,8 +4,17 @@ import { RequireAuth } from './components/PreviewGuard'
 import { SiteFooter } from './components/SiteFooter'
 import { SiteHeader } from './components/SiteHeader'
 import { HomePage } from './pages/HomePage'
-import { NotFoundPage, PlaceholderPage } from './pages/PlaceholderPage'
+import { NotFoundPage } from './pages/PlaceholderPage'
 import { CartPage } from './pages/store/CartPage'
+import {
+  AboutPage,
+  CollectionsPage,
+  CommercialPolicyPage,
+  ContactPage,
+  FaqPage,
+  PrivacyPage,
+  TermsPage,
+} from './pages/store/InstitutionalPages'
 import { CatalogPage } from './pages/store/CatalogPage'
 import { CustomPage } from './pages/store/CustomPage'
 import { ProductPage } from './pages/store/ProductPage'
@@ -26,9 +35,21 @@ const AccountSupportPage = page(accountPages, 'AccountSupportPage')
 const LoginPage = page(() => import('./pages/auth/LoginPage'), 'LoginPage')
 const RegisterPage = page(() => import('./pages/auth/RegisterPage'), 'RegisterPage')
 const ForgotPasswordPage = page(() => import('./pages/auth/ForgotPasswordPage'), 'ForgotPasswordPage')
+const CheckoutPage = page(() => import('./pages/store/CheckoutPage'), 'CheckoutPage')
 const ResetPasswordPage = page(() => import('./pages/auth/ResetPasswordPage'), 'ResetPasswordPage')
 const AdminLayout = page(() => import('./pages/admin/AdminLayout'), 'AdminLayout')
-const AdminPlaceholderPage = page(() => import('./pages/admin/AdminPlaceholderPage'), 'AdminPlaceholderPage')
+const catalogAdmin = () => import('./pages/admin/CatalogAdminPages')
+const ordersAdmin = () => import('./pages/admin/OrdersPages')
+const systemAdmin = () => import('./pages/admin/SystemPages')
+const StockPage = page(catalogAdmin, 'StockPage')
+const CategoriesPage = page(catalogAdmin, 'CategoriesPage')
+const OrdersPage = page(ordersAdmin, 'OrdersPage')
+const OrderDetailPage = page(ordersAdmin, 'OrderDetailPage')
+const StaffPage = page(systemAdmin, 'StaffPage')
+const AuditPage = page(systemAdmin, 'AuditPage')
+const SettingsPage = page(systemAdmin, 'SettingsPage')
+const ReportsPage = page(systemAdmin, 'ReportsPage')
+const ContentPage = page(systemAdmin, 'ContentPage')
 const DashboardPage = page(() => import('./pages/admin/DashboardPage'), 'DashboardPage')
 const ProductsPage = page(() => import('./pages/admin/ProductsPage'), 'ProductsPage')
 const ProductFormPage = page(() => import('./pages/admin/ProductFormPage'), 'ProductFormPage')
@@ -71,11 +92,23 @@ export function App() {
           <Route index element={<HomePage />} />
           <Route path="produtos" element={<CatalogPage />} />
           <Route path="produtos/:slug" element={<ProductPage />} />
-          <Route path="colecoes" element={<PlaceholderPage title="Coleções" phase="Fase 07" />} />
+          <Route path="colecoes" element={<CollectionsPage />} />
           <Route path="personalizados" element={<CustomPage />} />
-          <Route path="sobre" element={<PlaceholderPage title="Sobre" phase="Fase 07" />} />
-          <Route path="contato" element={<PlaceholderPage title="Contato" phase="Fase 07" />} />
+          <Route path="sobre" element={<AboutPage />} />
+          <Route path="contato" element={<ContactPage />} />
+          <Route path="perguntas-frequentes" element={<FaqPage />} />
+          <Route path="politica-comercial" element={<CommercialPolicyPage />} />
+          <Route path="privacidade" element={<PrivacyPage />} />
+          <Route path="termos" element={<TermsPage />} />
           <Route path="carrinho" element={<CartPage />} />
+          <Route
+            path="checkout"
+            element={
+              <RequireAuth>
+                <CheckoutPage />
+              </RequireAuth>
+            }
+          />
           <Route path="entrar" element={<LoginPage />} />
           <Route path="cadastro" element={<RegisterPage />} />
           <Route path="recuperar-senha" element={<ForgotPasswordPage />} />
@@ -112,12 +145,15 @@ export function App() {
           <Route path="produtos/:id" element={<ProductFormPage />} />
           <Route path="clientes" element={<CustomersPage />} />
           <Route path="clientes/:id" element={<CustomerDetailPage />} />
-          <Route path="pedidos" element={<AdminPlaceholderPage title="Pedidos" phase="Fase 09" />} />
-          <Route path="estoque" element={<AdminPlaceholderPage title="Estoque" phase="Fase 09" />} />
-          <Route path="categorias" element={<AdminPlaceholderPage title="Categorias" phase="Fase 09" />} />
-          <Route path="conteudo" element={<AdminPlaceholderPage title="Conteúdo" phase="Fase 09" />} />
-          <Route path="relatorios" element={<AdminPlaceholderPage title="Relatórios" phase="Fase 09" />} />
-          <Route path="configuracoes" element={<AdminPlaceholderPage title="Configurações" phase="Fase 09" />} />
+          <Route path="pedidos" element={<OrdersPage />} />
+          <Route path="pedidos/:number" element={<OrderDetailPage />} />
+          <Route path="estoque" element={<StockPage />} />
+          <Route path="categorias" element={<CategoriesPage />} />
+          <Route path="conteudo" element={<ContentPage />} />
+          <Route path="relatorios" element={<ReportsPage />} />
+          <Route path="configuracoes" element={<SettingsPage />} />
+          <Route path="equipe" element={<StaffPage />} />
+          <Route path="auditoria" element={<AuditPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

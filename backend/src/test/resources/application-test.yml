@@ -1,4 +1,9 @@
 app:
+  orders:
+    expiration-job-enabled: false
+  shipping:
+    zones:
+      - { name: "Teste PE", from-postal-code: "50000000", to-postal-code: "56999999", price: 15.00, min-days: 2, max-days: 4 }
   cors:
     allowed-origins: http://localhost:5173
   storage:

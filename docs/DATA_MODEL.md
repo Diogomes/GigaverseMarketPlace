@@ -1,6 +1,6 @@
 # Modelo de dados
 
-PostgreSQL 17 · migrations Flyway em `backend/src/main/resources/db/migration` (`V1`–`V6`) · Hibernate em modo `validate` (nunca altera o schema).
+PostgreSQL 17 · migrations Flyway em `backend/src/main/resources/db/migration` (`V1`–`V8`; V7 = carimbo de segurança da sessão, V8 = índices das métricas e do CRM) · Hibernate em modo `validate` (nunca altera o schema).
 
 ## Diagrama ER
 

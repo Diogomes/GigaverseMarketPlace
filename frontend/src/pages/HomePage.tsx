@@ -5,7 +5,10 @@ import { ProductCard } from '../components/store/ProductCard'
 import { buttonClass } from '../components/ui/button'
 import { DemoBanner } from '../components/ui/DemoBanner'
 import { EmptyState } from '../components/ui/EmptyState'
-import { listCategories, listFeaturedProducts } from '../data/store'
+import { CardsSkeleton } from '../components/ui/Skeleton'
+import { useCategories, useProducts } from '../api/catalog'
+import { demoCategoryImage } from '../data/store'
+import { usePageMeta } from '../lib/seo'
 import { BANNERS, categoryImage, HERO_IMAGES } from '../lib/images'
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -34,8 +37,10 @@ const COLLECTION_BANNERS = [
 
 /** Telas 1 (escuro) e 3 (claro) da referência visual. */
 export function HomePage() {
-  const categories = listCategories()
-  const featured = listFeaturedProducts()
+  usePageMeta(undefined, 'Impressão 3D de alta qualidade, peças personalizadas, colecionáveis e muito mais.')
+  const { data: categories = [], isPending: loadingCategories } = useCategories()
+  const { data: featuredPage, isPending: loadingFeatured, isError } = useProducts({ featured: true, size: 4 })
+  const featured = featuredPage?.content ?? []
   const hero = HERO_IMAGES.main
 
   return (
@@ -83,7 +88,9 @@ export function HomePage() {
         <h2 id="categorias" className="text-2xl font-bold">
           Categorias
         </h2>
-        {categories.length === 0 ? (
+        {loadingCategories ? (
+          <CardsSkeleton count={6} aspect="aspect-[3/2]" />
+        ) : categories.length === 0 ? (
           <div className="mt-6">
             <EmptyState icon={Boxes} title="Categorias em breve" description="O catálogo está sendo preparado." />
           </div>
@@ -91,7 +98,8 @@ export function HomePage() {
           <ul className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3">
             {categories.map((c) => {
               const Icon = CATEGORY_ICONS[c.slug] ?? Boxes
-              const img = c.image ? categoryImage(c.image) : null
+              const base = demoCategoryImage(c.slug)
+              const img = base ? categoryImage(base) : null
               return (
                 <li key={c.slug}>
                   <Link
@@ -142,16 +150,28 @@ export function HomePage() {
           </Link>
         </div>
         <div className="mt-4">
-          <DemoBanner>Produtos fictícios para visualizar o layout; o catálogo real vem da API na Fase 07.</DemoBanner>
+          <DemoBanner>
+            Catálogo de demonstração do ambiente de desenvolvimento (vem da API; imagens ilustrativas).
+          </DemoBanner>
         </div>
-        {featured.length === 0 ? (
+        {loadingFeatured ? (
+          <CardsSkeleton count={4} aspect="aspect-[4/5]" />
+        ) : isError ? (
+          <div className="mt-6">
+            <EmptyState
+              icon={Gem}
+              title="Não foi possível carregar os destaques"
+              description="Tente novamente em instantes."
+            />
+          </div>
+        ) : featured.length === 0 ? (
           <div className="mt-6">
             <EmptyState icon={Gem} title="Nenhum produto em destaque" description="Volte em breve para conferir." />
           </div>
         ) : (
           <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {featured.map((p, i) => (
-              <ProductCard key={p.id} product={p} index={i} />
+              <ProductCard key={p.slug} product={p} index={i} />
             ))}
           </div>
         )}

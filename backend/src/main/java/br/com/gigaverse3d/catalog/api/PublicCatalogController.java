@@ -49,13 +49,14 @@ public class PublicCatalogController {
 			@Parameter(description = "Slug da categoria", example = "colecionaveis") @RequestParam(required = false)
 			@Size(max = 80) String category,
 			@RequestParam(required = false) Product.Type type,
+			@Parameter(description = "true = só destaques") @RequestParam(required = false) Boolean featured,
 			@Parameter(description = "relevance | price_asc | price_desc | name | newest")
 			@RequestParam(defaultValue = "relevance")
 			@Pattern(regexp = "relevance|price_asc|price_desc|name|newest", message = "Ordenação inválida.") String sort,
 			@RequestParam(defaultValue = "0") @Min(value = 0, message = "Página inválida.") int page,
 			@RequestParam(defaultValue = "12") @Min(value = 1, message = "Tamanho mínimo 1.")
 			@Max(value = PageResponse.MAX_PAGE_SIZE, message = "Tamanho máximo 48.") int size) {
-		return catalog.search(q, category, type, sort, page, size);
+		return catalog.search(q, category, type, featured, sort, page, size);
 	}
 
 	@Operation(summary = "Detalhe de um produto ativo pelo slug")

@@ -73,8 +73,9 @@ public class InventoryItem {
 		return quantityOnHand - quantityReserved;
 	}
 
+	/** Mesmo critério do dashboard: disponível (em estoque − reservado) no mínimo ou abaixo. */
 	public boolean isLowStock() {
-		return quantityOnHand <= lowStockThreshold;
+		return available() <= lowStockThreshold;
 	}
 
 	/**

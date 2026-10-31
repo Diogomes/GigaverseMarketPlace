@@ -1,0 +1,9 @@
+User-agent: *
+Disallow: /conta
+Disallow: /admin
+Disallow: /checkout
+Disallow: /carrinho
+Disallow: /redefinir-senha
+
+# Em produção, troque pelo domínio definitivo (D-P08).
+Sitemap: /sitemap.xml

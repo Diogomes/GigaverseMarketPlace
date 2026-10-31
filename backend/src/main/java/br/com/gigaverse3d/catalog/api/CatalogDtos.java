@@ -138,6 +138,10 @@ public final class CatalogDtos {
 			@Schema(description = "Obrigatório na edição: versão lida (controle de concorrência)") Long version) {
 	}
 
+	public record ProductStatusRequest(@NotNull(message = "Informe o status.") Product.Status status,
+			@NotNull(message = "Informe a versão lida do produto.") Long version) {
+	}
+
 	public record StockResponse(int onHand, int reserved, int available, int lowStockThreshold, boolean low) {
 	}
 

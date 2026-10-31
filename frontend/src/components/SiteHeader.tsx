@@ -2,6 +2,7 @@ import { LayoutDashboard, LogOut, Menu, Search, ShoppingCart, User, X } from 'lu
 import { useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
+import { useCart } from '../cart/CartProvider'
 import { NAV_LINKS } from '../lib/links'
 import { BrandLogo } from './BrandLogo'
 import { ThemeToggle } from './ThemeToggle'
@@ -19,6 +20,7 @@ const iconButton =
 export function SiteHeader() {
   const [open, setOpen] = useState(false)
   const { user, isStaff, logout } = useAuth()
+  const { count } = useCart()
   const navigate = useNavigate()
   const firstName = user?.fullName.split(' ')[0]
 
@@ -51,8 +53,20 @@ export function SiteHeader() {
               <User aria-hidden className="size-5" />
             </Link>
           </span>
-          <Link to="/carrinho" className={iconButton} aria-label="Carrinho">
+          <Link
+            to="/carrinho"
+            className={`${iconButton} relative`}
+            aria-label={`Carrinho, ${count} ${count === 1 ? 'item' : 'itens'}`}
+          >
             <ShoppingCart aria-hidden className="size-5" />
+            {count > 0 && (
+              <span
+                aria-hidden
+                className="absolute right-0.5 top-0.5 min-w-4 rounded-full bg-primary px-1 text-center text-[10px] font-bold leading-4 text-on-primary"
+              >
+                {count > 99 ? '99+' : count}
+              </span>
+            )}
           </Link>
           <ThemeToggle />
           <span className="hidden sm:contents">

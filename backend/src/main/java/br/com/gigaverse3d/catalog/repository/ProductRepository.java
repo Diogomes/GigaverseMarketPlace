@@ -46,6 +46,7 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 			  AND (CAST(:category AS text) IS NULL OR c.slug = CAST(:category AS text))
 			  AND (CAST(:type AS text) IS NULL OR p.product_type = CAST(:type AS text))
 			  AND (CAST(:q AS text) IS NULL OR p.search_vector @@ plainto_tsquery('portuguese_unaccent', CAST(:q AS text)))
+			  AND (CAST(:featured AS boolean) IS NULL OR p.featured = CAST(:featured AS boolean))
 			ORDER BY
 			  CASE WHEN CAST(:sort AS text) = 'price_asc' THEN COALESCE(p.promo_price, p.price) END ASC,
 			  CASE WHEN CAST(:sort AS text) = 'price_desc' THEN COALESCE(p.promo_price, p.price) END DESC,
@@ -60,8 +61,13 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 			  AND (CAST(:category AS text) IS NULL OR c.slug = CAST(:category AS text))
 			  AND (CAST(:type AS text) IS NULL OR p.product_type = CAST(:type AS text))
 			  AND (CAST(:q AS text) IS NULL OR p.search_vector @@ plainto_tsquery('portuguese_unaccent', CAST(:q AS text)))
+			  AND (CAST(:featured AS boolean) IS NULL OR p.featured = CAST(:featured AS boolean))
 			""", nativeQuery = true)
 	Page<Product> searchPublic(@Param("q") String q, @Param("category") String category, @Param("type") String type,
-			@Param("sort") String sort, Pageable pageable);
+			@Param("featured") Boolean featured, @Param("sort") String sort, Pageable pageable);
+
+	@Query("SELECT p.slug FROM Product p WHERE p.status = br.com.gigaverse3d.catalog.domain.Product.Status.ACTIVE "
+			+ "AND p.category.active = true ORDER BY p.id")
+	List<String> findActiveSlugs();
 
 }

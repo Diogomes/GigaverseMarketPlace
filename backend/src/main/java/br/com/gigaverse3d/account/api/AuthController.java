@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -100,10 +101,11 @@ public class AuthController {
 		sessions.end(request, response);
 	}
 
-	@Operation(summary = "Usuário da sessão atual (401 se não autenticado)")
+	@Operation(summary = "Usuário da sessão atual (204 sem corpo se não houver sessão)")
 	@GetMapping("/me")
-	public MeResponse me() {
-		return me(CurrentUser.require());
+	public ResponseEntity<MeResponse> me() {
+		// 204 em vez de 401: visitantes anônimos são o caso normal da loja (sem erro no console).
+		return CurrentUser.get().map(p -> ResponseEntity.ok(me(p))).orElseGet(() -> ResponseEntity.noContent().build());
 	}
 
 	@Operation(summary = "Solicita link de redefinição de senha (resposta sempre igual)")

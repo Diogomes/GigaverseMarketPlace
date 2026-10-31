@@ -30,6 +30,7 @@ import br.com.gigaverse3d.common.web.ApiExceptions.PayloadTooLargeException;
 import br.com.gigaverse3d.common.web.ApiExceptions.TooManyRequestsException;
 import br.com.gigaverse3d.common.web.ApiExceptions.UnauthorizedException;
 import br.com.gigaverse3d.inventory.domain.InsufficientStockException;
+import br.com.gigaverse3d.order.domain.InvalidOrderTransitionException;
 
 /**
  * Respostas de erro no formato RFC 9457 (application/problem+json), sem stack trace nem
@@ -105,7 +106,8 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problem(HttpStatus.NOT_FOUND, ex.getMessage()));
 	}
 
-	@ExceptionHandler({ ConflictException.class, InsufficientStockException.class })
+	@ExceptionHandler({ ConflictException.class, InsufficientStockException.class,
+			InvalidOrderTransitionException.class })
 	ResponseEntity<ProblemDetail> conflict(RuntimeException ex) {
 		return ResponseEntity.status(HttpStatus.CONFLICT).body(problem(HttpStatus.CONFLICT, ex.getMessage()));
 	}

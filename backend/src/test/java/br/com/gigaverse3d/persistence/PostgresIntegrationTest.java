@@ -8,11 +8,13 @@ import org.springframework.test.context.ActiveProfiles;
 import br.com.gigaverse3d.TestcontainersConfiguration;
 import br.com.gigaverse3d.account.AuthTestSupport;
 import br.com.gigaverse3d.catalog.CatalogFixtures;
+import br.com.gigaverse3d.order.TestHmacPaymentProvider;
 
 /** Base compartilhada: um único contexto Spring + PostgreSQL (Testcontainers) para todas as subclasses. */
 @SpringBootTest
 @AutoConfigureMockMvc
-@Import({ TestcontainersConfiguration.class, CatalogFixtures.class, AuthTestSupport.Config.class })
+@Import({ TestcontainersConfiguration.class, CatalogFixtures.class, AuthTestSupport.Config.class,
+		TestHmacPaymentProvider.Config.class })
 @ActiveProfiles("test")
 public abstract class PostgresIntegrationTest {
 }

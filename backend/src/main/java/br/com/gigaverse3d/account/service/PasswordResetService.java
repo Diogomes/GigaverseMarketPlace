@@ -44,6 +44,8 @@ public class PasswordResetService {
 
 	private static final SecureRandom RANDOM = new SecureRandom();
 
+	static final Duration INVITATION_TTL = Duration.ofHours(48);
+
 	private final UserRepository users;
 
 	private final PasswordResetTokenRepository tokens;
@@ -80,12 +82,8 @@ public class PasswordResetService {
 			.filter(u -> u.getStatus() == User.Status.ACTIVE)
 			.ifPresent(user -> {
 				// Só o link mais recente vale.
-				tokens.findUsableByUser(user.getId(), now).forEach(t -> t.consume(now));
-				byte[] raw = new byte[32];
-				RANDOM.nextBytes(raw);
-				String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
 				Duration ttl = Duration.ofMinutes(properties.resetTokenMinutes());
-				tokens.save(new PasswordResetToken(user.getId(), sha256(token), now, now.plus(ttl)));
+				String token = issueToken(user, now, ttl);
 				audit.recordAs(user.getId(), "PASSWORD_RESET_REQUESTED", "user", user.getId(), Map.of());
 				String link = properties.frontendBaseUrl() + "/redefinir-senha?token=" + token;
 				EmailMessage message = new EmailMessage(user.getEmail(), "Gigaverse3D — redefinição de senha", """
@@ -124,6 +122,38 @@ public class PasswordResetService {
 				Se não foi você, entre em contato conosco imediatamente.
 				""".formatted(user.getFullName()));
 		AfterTransaction.onCommit(() -> sendQuietly(notice));
+	}
+
+	/**
+	 * Convite para conta da equipe: o administrador nunca define nem vê a senha — a pessoa
+	 * convidada cria a própria pelo link (mesmo mecanismo de token da recuperação, validade maior).
+	 */
+	@Transactional
+	public void sendInvitation(User user, String invitedBy) {
+		Instant now = clock.instant();
+		String token = issueToken(user, now, INVITATION_TTL);
+		String link = properties.frontendBaseUrl() + "/redefinir-senha?token=" + token;
+		EmailMessage message = new EmailMessage(user.getEmail(), "Gigaverse3D — convite para o painel", """
+				Olá, %s!
+
+				%s criou para você um acesso ao painel administrativo da Gigaverse3D.
+				Defina sua senha pelo link abaixo em até %d horas:
+
+				%s
+
+				Se você não esperava este convite, ignore este e-mail.
+				""".formatted(user.getFullName(), invitedBy, INVITATION_TTL.toHours(), link));
+		AfterTransaction.onCommit(() -> sendQuietly(message));
+	}
+
+	/** Gera token novo (invalidando os anteriores do usuário); devolve o valor em claro só para o e-mail. */
+	private String issueToken(User user, Instant now, Duration ttl) {
+		tokens.findUsableByUser(user.getId(), now).forEach(t -> t.consume(now));
+		byte[] raw = new byte[32];
+		RANDOM.nextBytes(raw);
+		String token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+		tokens.save(new PasswordResetToken(user.getId(), sha256(token), now, now.plus(ttl)));
+		return token;
 	}
 
 	/** Falha de envio não altera a resposta (evita revelar existência da conta) — só registra. */

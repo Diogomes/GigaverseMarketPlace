@@ -4,6 +4,7 @@ import type { ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { vi } from 'vitest'
 import { AuthProvider, type SessionUser } from '../auth/AuthProvider'
+import { CartProvider } from '../cart/CartProvider'
 
 type Handler = (url: string, init?: RequestInit) => Response | undefined
 
@@ -20,7 +21,7 @@ export function mockApi(me: SessionUser | null, extra: Handler = () => undefined
     const url = String(input)
     const custom = extra(url, init)
     if (custom) return custom
-    if (url.endsWith('/api/v1/auth/me')) return me ? json(200, me) : json(401, { detail: 'Faça login.' })
+    if (url.endsWith('/api/v1/auth/me')) return me ? json(200, me) : new Response(null, { status: 204 })
     if (url.endsWith('/api/v1/auth/csrf')) {
       document.cookie = 'XSRF-TOKEN=token-de-teste; path=/'
       return json(200, { token: 'token-de-teste', headerName: 'X-XSRF-TOKEN' })
@@ -36,14 +37,16 @@ export function renderApp(ui: ReactNode, { route = '/', extraRoutes = [] as Arra
   return render(
     <QueryClientProvider client={client}>
       <AuthProvider>
-        <MemoryRouter initialEntries={[route]}>
-          <Routes>
-            <Route path="*" element={ui} />
-            {extraRoutes.map(([path, el]) => (
-              <Route key={path} path={path} element={el} />
-            ))}
-          </Routes>
-        </MemoryRouter>
+        <CartProvider>
+          <MemoryRouter initialEntries={[route]}>
+            <Routes>
+              <Route path="*" element={ui} />
+              {extraRoutes.map(([path, el]) => (
+                <Route key={path} path={path} element={el} />
+              ))}
+            </Routes>
+          </MemoryRouter>
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>,
   )

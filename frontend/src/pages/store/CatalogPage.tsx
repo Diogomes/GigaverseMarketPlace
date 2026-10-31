@@ -1,19 +1,22 @@
-import { ChevronLeft, ChevronRight, PackageSearch, Search } from 'lucide-react'
-import { useEffect, useRef } from 'react'
+import { ChevronLeft, ChevronRight, PackageSearch, Search, WifiOff } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
+import { useCategories, useProducts, type ProductSort } from '../../api/catalog'
 import { ProductCard } from '../../components/store/ProductCard'
 import { buttonClass } from '../../components/ui/button'
 import { DemoBanner } from '../../components/ui/DemoBanner'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { controlClass } from '../../components/ui/Field'
-import { getCategory, listCategories, listPublicProducts, type ProductSort } from '../../data/store'
+import { CardsSkeleton } from '../../components/ui/Skeleton'
+import { usePageMeta } from '../../lib/seo'
 
-const PAGE_SIZE = 8
+const PAGE_SIZE = 12
 const SORTS: Array<{ value: ProductSort; label: string }> = [
-  { value: 'relevancia', label: 'Destaques' },
-  { value: 'menor-preco', label: 'Menor preço' },
-  { value: 'maior-preco', label: 'Maior preço' },
-  { value: 'nome', label: 'Nome (A–Z)' },
+  { value: 'relevance', label: 'Destaques' },
+  { value: 'price_asc', label: 'Menor preço' },
+  { value: 'price_desc', label: 'Maior preço' },
+  { value: 'name', label: 'Nome (A–Z)' },
+  { value: 'newest', label: 'Novidades' },
 ]
 
 export function CatalogPage() {
@@ -21,18 +24,26 @@ export function CatalogPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   const q = params.get('q') ?? ''
   const category = params.get('categoria') ?? ''
-  const sort = (params.get('ordem') as ProductSort | null) ?? 'relevancia'
+  const sortParam = params.get('ordem') as ProductSort | null
+  const sort = SORTS.some((s) => s.value === sortParam) ? (sortParam as ProductSort) : 'relevance'
   const page = Math.max(1, Number(params.get('pagina')) || 1)
+  // a busca digitada só vai para a URL/API após uma pausa (evita uma requisição por tecla)
+  const [typed, setTyped] = useState(q)
+
+  const { data: categories = [] } = useCategories()
+  const { data, isPending, isError, isFetching, refetch } = useProducts({
+    q: q || undefined,
+    category: category || undefined,
+    sort,
+    page: page - 1,
+    size: PAGE_SIZE,
+  })
+  const categoryName = categories.find((c) => c.slug === category)?.name
+  usePageMeta(categoryName ?? 'Produtos', categories.find((c) => c.slug === category)?.description)
 
   useEffect(() => {
     if (params.get('busca')) searchRef.current?.focus()
   }, [params])
-
-  const all = listPublicProducts({ q, category: category || undefined, sort })
-  const pages = Math.max(1, Math.ceil(all.length / PAGE_SIZE))
-  const current = Math.min(page, pages)
-  const items = all.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE)
-  const categoryName = getCategory(category)?.name
 
   function update(key: string, value: string) {
     const next = new URLSearchParams(params)
@@ -42,6 +53,27 @@ export function CatalogPage() {
     if (key !== 'pagina') next.delete('pagina')
     setParams(next, { replace: true })
   }
+
+  useEffect(() => {
+    if (typed.trim() === q) return
+    const t = setTimeout(() => {
+      setParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('busca')
+          next.delete('pagina')
+          if (typed.trim()) next.set('q', typed.trim())
+          else next.delete('q')
+          return next
+        },
+        { replace: true },
+      )
+    }, 350)
+    return () => clearTimeout(t)
+  }, [typed, q, setParams])
+
+  const items = data?.content ?? []
+  const pages = data?.totalPages ?? 1
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
@@ -54,7 +86,7 @@ export function CatalogPage() {
       <h1 className="mt-2 text-3xl font-bold">{categoryName ?? 'Produtos'}</h1>
 
       <div className="mt-4">
-        <DemoBanner>Produtos fictícios para visualizar o layout; o catálogo real vem da API na Fase 07.</DemoBanner>
+        <DemoBanner>Catálogo de demonstração do ambiente de desenvolvimento (imagens ilustrativas).</DemoBanner>
       </div>
 
       <form role="search" className="mt-6 grid gap-3 sm:grid-cols-[1fr_auto_auto]" onSubmit={(e) => e.preventDefault()}>
@@ -64,8 +96,9 @@ export function CatalogPage() {
           <input
             ref={searchRef}
             type="search"
-            value={q}
-            onChange={(e) => update('q', e.target.value)}
+            value={typed}
+            maxLength={100}
+            onChange={(e) => setTyped(e.target.value)}
             placeholder="Buscar produtos…"
             className={`${controlClass} h-10 pl-9`}
           />
@@ -78,7 +111,7 @@ export function CatalogPage() {
             className={`${controlClass} h-10`}
           >
             <option value="">Todas as categorias</option>
-            {listCategories().map((c) => (
+            {categories.map((c) => (
               <option key={c.slug} value={c.slug}>
                 {c.name}
               </option>
@@ -97,18 +130,43 @@ export function CatalogPage() {
         </label>
       </form>
 
-      <p className="mt-4 text-sm text-fg-muted" aria-live="polite">
-        {all.length} {all.length === 1 ? 'produto encontrado' : 'produtos encontrados'}
-      </p>
+      {data && (
+        <p className="mt-4 text-sm text-fg-muted" aria-live="polite">
+          {data.totalElements} {data.totalElements === 1 ? 'produto encontrado' : 'produtos encontrados'}
+          {isFetching && ' · atualizando…'}
+        </p>
+      )}
 
-      {items.length === 0 ? (
+      {isPending ? (
+        <CardsSkeleton count={8} aspect="aspect-[4/5]" />
+      ) : isError ? (
+        <div className="mt-6">
+          <EmptyState
+            icon={WifiOff}
+            title="Não foi possível carregar os produtos"
+            description="Verifique sua conexão e tente novamente."
+            action={
+              <button type="button" className={buttonClass('outline')} onClick={() => void refetch()}>
+                Tentar novamente
+              </button>
+            }
+          />
+        </div>
+      ) : items.length === 0 ? (
         <div className="mt-6">
           <EmptyState
             icon={PackageSearch}
             title="Nenhum produto encontrado"
             description="Tente outro termo de busca ou remova os filtros."
             action={
-              <button type="button" className={buttonClass('outline')} onClick={() => setParams({}, { replace: true })}>
+              <button
+                type="button"
+                className={buttonClass('outline')}
+                onClick={() => {
+                  setTyped('')
+                  setParams({}, { replace: true })
+                }}
+              >
                 Limpar filtros
               </button>
             }
@@ -117,7 +175,7 @@ export function CatalogPage() {
       ) : (
         <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
           {items.map((p, i) => (
-            <ProductCard key={p.id} product={p} index={i} />
+            <ProductCard key={p.slug} product={p} index={i} />
           ))}
         </div>
       )}
@@ -127,19 +185,19 @@ export function CatalogPage() {
           <button
             type="button"
             className={buttonClass('outline', 'sm')}
-            disabled={current === 1}
-            onClick={() => update('pagina', String(current - 1))}
+            disabled={page <= 1}
+            onClick={() => update('pagina', String(page - 1))}
           >
             <ChevronLeft aria-hidden className="size-4" /> Anterior
           </button>
           <span className="px-3 text-sm text-fg-muted">
-            Página {current} de {pages}
+            Página {page} de {pages}
           </span>
           <button
             type="button"
             className={buttonClass('outline', 'sm')}
-            disabled={current === pages}
-            onClick={() => update('pagina', String(current + 1))}
+            disabled={page >= pages}
+            onClick={() => update('pagina', String(page + 1))}
           >
             Próxima <ChevronRight aria-hidden className="size-4" />
           </button>

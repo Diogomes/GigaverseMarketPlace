@@ -34,7 +34,8 @@ public class SecurityConfig {
 			JdbcTemplate jdbc) throws Exception {
 		http
 			.cors(Customizer.withDefaults())
-			.csrf(csrf -> csrf.spa())
+			// Webhooks de pagamento são servidor→servidor: autenticados por assinatura, não por cookie.
+			.csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/v1/payments/webhooks/**"))
 			.httpBasic(basic -> basic.disable())
 			.formLogin(form -> form.disable())
 			.logout(logout -> logout.disable())
@@ -42,14 +43,23 @@ public class SecurityConfig {
 			.addFilterAfter(new SecurityStampFilter(jdbc), SecurityContextHolderFilter.class)
 			.exceptionHandling(ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
 			.authorizeHttpRequests(auth -> auth
-				.requestMatchers(HttpMethod.GET, "/api/v1/public/**", "/media/**", "/api/v1/auth/csrf").permitAll()
+				.requestMatchers(HttpMethod.GET, "/api/v1/public/**", "/media/**", "/api/v1/auth/csrf", "/api/v1/auth/me",
+						"/sitemap.xml")
+				.permitAll()
 				.requestMatchers(HttpMethod.POST, "/api/v1/auth/login", "/api/v1/auth/register",
 						"/api/v1/auth/password/forgot", "/api/v1/auth/password/reset")
 				.permitAll()
+				.requestMatchers(HttpMethod.POST, "/api/v1/payments/webhooks/**").permitAll()
+				// Confirmar pagamento e excluir: somente ADMIN.
+				.requestMatchers(HttpMethod.POST, "/api/v1/admin/orders/*/confirm-payment").hasRole("ADMIN")
+				// Equipe, auditoria e exportações (dados pessoais em massa): somente ADMIN.
+				.requestMatchers("/api/v1/admin/users/**", "/api/v1/admin/audit/**", "/api/v1/admin/*/export")
+				.hasRole("ADMIN")
 				// Exclusões administrativas: somente ADMIN. Demais operações: ADMIN ou OPERATOR.
 				.requestMatchers(HttpMethod.DELETE, "/api/v1/admin/**").hasRole("ADMIN")
 				.requestMatchers("/api/v1/admin/**").hasAnyRole("ADMIN", "OPERATOR")
-				.requestMatchers("/api/v1/account/**", "/api/v1/auth/**").authenticated()
+				.requestMatchers("/api/v1/account/**", "/api/v1/auth/**", "/api/v1/cart/**", "/api/v1/checkout/**")
+				.authenticated()
 				.requestMatchers("/actuator/health", "/actuator/health/**").permitAll()
 				// Despacho de erro do container (ex.: URL malformada) deve manter o status original (400),
 				// não virar 401. A resposta de /error não expõe stack trace nem mensagens internas.

@@ -7,10 +7,25 @@ export function formatBRL(cents: number): string {
   return brl.format(cents / 100)
 }
 
+/** Valores da API chegam como número decimal em reais (BigDecimal serializado). */
+export function formatPrice(reais: number): string {
+  return brl.format(reais)
+}
+
+/** Data/hora ISO completa (instante) no fuso local. */
+export function formatDateTime(iso: string): string {
+  return new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(iso))
+}
+
 /** Datas ISO `YYYY-MM-DD` são tratadas como data local (sem deslocamento de fuso). */
 function parseDay(iso: string): Date {
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
   return new Date(y, m - 1, d)
+}
+
+/** Data (sem hora) de um instante ISO completo, no fuso local — ex.: data da última compra. */
+export function formatInstantDate(iso: string): string {
+  return shortDate.format(new Date(iso))
 }
 
 export function formatDate(iso: string): string {

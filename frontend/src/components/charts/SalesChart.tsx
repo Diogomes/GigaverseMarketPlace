@@ -39,7 +39,10 @@ export function SalesChart({ data }: { data: Point[] }) {
   const line = data.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(p.cents).toFixed(1)}`).join(' ')
   const area = `${line} L${x(data.length - 1)},${y(0)} L${x(0)},${y(0)} Z`
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max)
-  const labelEvery = Math.max(1, Math.ceil(data.length / 6))
+  // ~64px por rótulo "dd/mm": menos rótulos em telas estreitas, sem colisão com o último
+  const labelEvery = Math.max(1, Math.ceil(data.length / Math.max(2, Math.min(6, Math.floor(innerW / 64)))))
+  const showLabel = (i: number) =>
+    i === data.length - 1 || (i % labelEvery === 0 && data.length - 1 - i >= labelEvery * 0.75)
 
   function onMove(e: React.PointerEvent<SVGRectElement>) {
     const rect = e.currentTarget.getBoundingClientRect()
@@ -74,7 +77,7 @@ export function SalesChart({ data }: { data: Point[] }) {
             </g>
           ))}
           {data.map((p, i) =>
-            i % labelEvery === 0 || i === data.length - 1 ? (
+            showLabel(i) ? (
               <text
                 key={p.day}
                 x={x(i)}

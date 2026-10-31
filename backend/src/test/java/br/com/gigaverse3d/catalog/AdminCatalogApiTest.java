@@ -104,6 +104,29 @@ class AdminCatalogApiTest extends PostgresIntegrationTest {
 		mvc.perform(delete("/api/v1/admin/products/{id}", id).with(csrf())).andExpect(status().isForbidden());
 	}
 
+	@Test
+	@WithMockUser(username = "operador@exemplo.com", roles = "OPERATOR")
+	void archiveAndReactivateChecksVersionAndIsAudited() throws Exception {
+		Product p = fixtures.activeProduct(category, "Arquivável", "20.00", 1);
+		String path = "/api/v1/admin/products/" + p.getId() + "/status";
+		mvc.perform(post(path).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"status\":\"ARCHIVED\",\"version\":" + p.getVersion() + "}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("ARCHIVED"))
+			.andExpect(jsonPath("$.version").value(p.getVersion() + 1));
+		// versão antiga: outra pessoa já alterou
+		mvc.perform(post(path).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"status\":\"ACTIVE\",\"version\":" + p.getVersion() + "}"))
+			.andExpect(status().isConflict());
+		mvc.perform(get("/api/v1/public/products/" + p.getSlug())).andExpect(status().isNotFound());
+		mvc.perform(post(path).with(csrf()).contentType(MediaType.APPLICATION_JSON)
+			.content("{\"status\":\"ACTIVE\",\"version\":" + (p.getVersion() + 1) + "}"))
+			.andExpect(status().isOk());
+		assertThat(auditLog.findByEntityTypeAndEntityIdOrderByIdDesc("product", String.valueOf(p.getId())))
+			.filteredOn(a -> a.getAction().equals("PRODUCT_STATUS_CHANGED"))
+			.hasSize(2);
+	}
+
 	// --- criação e validação
 
 	@Test

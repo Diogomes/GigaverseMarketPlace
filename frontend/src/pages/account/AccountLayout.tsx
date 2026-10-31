@@ -1,7 +1,6 @@
 import { Headset, House, LogOut, MapPin, Package, UserRound, type LucideIcon } from 'lucide-react'
 import { NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
-import { DemoRibbon } from '../../components/PreviewGuard'
 import { cn } from '../../lib/cn'
 
 const LINKS: Array<{ to: string; label: string; icon: LucideIcon; end?: boolean }> = [
@@ -24,7 +23,6 @@ export function AccountLayout() {
 
   return (
     <>
-      <DemoRibbon area="Minha conta" />
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[15rem_1fr]">
         <aside className="lg:self-start lg:rounded-card lg:border lg:border-border lg:bg-surface lg:p-3 lg:shadow-card">
           <nav aria-label="Minha conta">

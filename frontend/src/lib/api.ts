@@ -15,6 +15,14 @@ export class ApiError extends Error {
   }
 }
 
+/** Disparado quando uma chamada autenticada recebe 401 (sessão expirou ou foi encerrada). */
+export const SESSION_EXPIRED_EVENT = 'gv3d:session-expired'
+
+function notifyIfSessionLost(path: string, status: number) {
+  const authProbe = path.startsWith('/api/v1/auth/')
+  if (status === 401 && !authProbe) window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT))
+}
+
 async function toError(response: Response): Promise<ApiError> {
   let detail = `Falha na requisição (${response.status})`
   let errors: FieldError[] = []
@@ -38,7 +46,11 @@ export async function apiGet<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: 'include',
     headers: { Accept: 'application/json', ...init?.headers },
   })
-  if (!response.ok) throw await toError(response)
+  if (!response.ok) {
+    notifyIfSessionLost(path, response.status)
+    throw await toError(response)
+  }
+  if (response.status === 204) return null as T
   return (await response.json()) as T
 }
 
@@ -57,8 +69,31 @@ async function csrfToken(): Promise<string> {
   return decodeURIComponent(readCookie('XSRF-TOKEN') ?? token)
 }
 
-/** POST/PUT/DELETE com proteção CSRF (header X-XSRF-TOKEN) e cookie de sessão. */
-export async function apiSend<T>(method: 'POST' | 'PUT' | 'DELETE', path: string, body?: unknown): Promise<T> {
+/** Baixa um arquivo (ex.: CSV) com a sessão atual, usando o nome indicado pelo servidor. */
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: 'include' })
+  if (!response.ok) {
+    notifyIfSessionLost(path, response.status)
+    throw await toError(response)
+  }
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const name = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? fallbackName
+  const url = URL.createObjectURL(await response.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = name
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+/** POST/PUT/DELETE com proteção CSRF (header X-XSRF-TOKEN) e cookie de sessão. FormData vai como multipart. */
+export async function apiSend<T>(
+  method: 'POST' | 'PUT' | 'DELETE',
+  path: string,
+  body?: unknown,
+  extraHeaders: Record<string, string> = {},
+): Promise<T> {
+  const multipart = body instanceof FormData
   const send = async (token: string) =>
     fetch(`${API_BASE_URL}${path}`, {
       method,
@@ -66,9 +101,10 @@ export async function apiSend<T>(method: 'POST' | 'PUT' | 'DELETE', path: string
       headers: {
         Accept: 'application/json',
         'X-XSRF-TOKEN': token,
-        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...extraHeaders,
+        ...(body === undefined || multipart ? {} : { 'Content-Type': 'application/json' }),
       },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined ? undefined : multipart ? body : JSON.stringify(body),
     })
   let response = await send(await csrfToken())
   if (response.status === 403) {
@@ -76,7 +112,10 @@ export async function apiSend<T>(method: 'POST' | 'PUT' | 'DELETE', path: string
     document.cookie = 'XSRF-TOKEN=; Max-Age=0; path=/'
     response = await send(await csrfToken())
   }
-  if (!response.ok) throw await toError(response)
+  if (!response.ok) {
+    notifyIfSessionLost(path, response.status)
+    throw await toError(response)
+  }
   if (response.status === 204) return undefined as T
   const text = await response.text()
   return (text ? JSON.parse(text) : undefined) as T

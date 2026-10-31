@@ -75,7 +75,7 @@ Remove-Item Env:APP_BOOTSTRAP_ADMIN_EMAIL, Env:APP_BOOTSTRAP_ADMIN_PASSWORD, Env
 .\mvnw.cmd spring-boot:run
 ```
 
-Depois entre em <http://localhost:5173/entrar> — administradores e operadores vão para `/admin`. Se as variáveis ficarem definidas, nada acontece (já existe ADMIN), mas mantenha-as fora do ambiente.
+Depois entre em <http://localhost:5173/entrar> — administradores e operadores vão para `/admin`. Outras pessoas da equipe são convidadas em **/admin/equipe** (o convite chega por e-mail — em dev, no Mailpit — e a pessoa define a própria senha). Se as variáveis ficarem definidas, nada acontece (já existe ADMIN), mas mantenha-as fora do ambiente.
 
 ## 7. E-mails em desenvolvimento
 
@@ -88,6 +88,18 @@ cd backend && ./mvnw verify                 # requer Docker (Testcontainers)
 cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 ```
 
+### Testes ponta a ponta (Playwright)
+
+Com Postgres, backend (8080) e frontend (`npm run dev`, 5173) rodando:
+
+```bash
+cd frontend && npm run e2e      # usa o Microsoft Edge instalado (channel msedge)
+```
+
+Os testes criam contas `e2e-…@exemplo.com` com pedidos **cancelados** no banco de desenvolvimento (o estoque volta). Elas não podem ser apagadas enquanto tiverem pedidos; para zerar tudo use `docker compose down -v` (apaga o banco local). Nunca rode o E2E contra produção.
+
+Se aparecer 429 durante o E2E, o limite de cadastros por IP foi atingido — reinicie o backend (o limitador fica em memória).
+
 ## Problemas comuns
 
 | Sintoma | Causa / solução |
@@ -98,6 +110,7 @@ cd frontend && npm run lint && npm run typecheck && npm test && npm run build
 | `Java 21+ é obrigatório` | Ajuste `JAVA_HOME` (seção 1) |
 | `Connection refused :5432` | `docker compose up -d` e aguarde `healthy` |
 | Testcontainers: `Could not find a valid Docker environment` | Inicie o Docker Desktop |
+| Checkout sem opção de entrega | Sem faixas de frete configuradas só há retirada — esperado até D-P02 |
 | Rodapé "API indisponível" | Backend não está rodando na porta 8080 |
 | Porta 5432 ocupada | Defina `POSTGRES_PORT=5433` no `.env` e `DB_URL` correspondente |
 
