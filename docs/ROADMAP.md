@@ -12,8 +12,8 @@ Cada fase termina com resumo, comandos executados, resultados reais de testes e 
 | 06 | Carrinho, checkout e pedidos | Carrinho, totais no servidor, idempotência, máquina de estados, `PaymentProvider`/`ShippingProvider`, modo **pagamento manual/pendente** | Gateway (D-P01), frete (D-P02), política de troca (D-P06) | ✅ Concluída em modo manual (gateway/frete reais pendentes) |
 | 07 | Loja pública (frontend) | Design tokens, tema claro/escuro persistido, home, catálogo, produto, carrinho, checkout, páginas institucionais, SEO, Instagram | Logo transparente (D-P09), textos institucionais | ✅ Concluída (textos institucionais em rascunho) |
 | 08 | Área do cliente | Rotas protegidas, perfil, endereços, pedidos, consentimentos, sessão expirada, testes E2E | — | ✅ Aprovada (2026-10-31) |
-| 09 | Admin e CRM | Dashboard com métricas reais, produtos/estoque, pedidos, clientes, notas, etiquetas, auditoria, bootstrap seguro do admin | Definições de métricas (D-P12) | ✅ Concluída (179 testes backend · 66 frontend) — aguardando aprovação; métricas seguem a proposta D-P12 |
-| 10 | Segurança, LGPD, observabilidade | `SECURITY.md`, `PRIVACY_DATA_MAP.md`, `INCIDENT_RESPONSE.md`, logs estruturados, backup/restauração | Revisão jurídica (D-P07) | Pendente |
+| 09 | Admin e CRM | Dashboard com métricas reais, produtos/estoque, pedidos, clientes, notas, etiquetas, auditoria, bootstrap seguro do admin | Definições de métricas (D-P12) | ✅ Aprovada (2026-10-31); métricas seguem a proposta D-P12 |
+| 10 | Segurança, LGPD, observabilidade | `SECURITY.md`, `PRIVACY_DATA_MAP.md`, `INCIDENT_RESPONSE.md`, `BACKUP_RESTORE.md`, logs estruturados, backup/restauração | Revisão jurídica (D-P07) | ✅ Concluída (193 testes backend · 68 frontend · 3 E2E) — aguardando aprovação; itens jurídicos listados em `PRIVACY_DATA_MAP.md` §3 |
 | 11 | Testes e qualidade | Suíte completa, E2E Playwright, acessibilidade, performance, `TEST_REPORT.md` | — | Pendente |
 | 12 | Deploy e lançamento | Dockerfiles prod, CI/CD com aprovação manual, runbooks, `DEPLOYMENT.md`, `GO_LIVE_CHECKLIST.md` | Hospedagem (D-P03), domínio (D-P08) | Pendente |
 

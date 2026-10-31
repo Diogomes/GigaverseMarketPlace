@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import { PrivacyCard } from '../../components/account/PrivacyCard'
 import { buttonClass } from '../../components/ui/button'
 import { InputField } from '../../components/ui/Field'
 import { Notice } from '../../components/ui/Notice'
@@ -50,6 +51,7 @@ export function AccountProfilePage() {
       {isError && <Notice>Não foi possível carregar seus dados. Tente novamente.</Notice>}
       {data && <ProfileForm profile={data} />}
       <PasswordForm />
+      <PrivacyCard />
     </div>
   )
 }

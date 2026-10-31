@@ -57,16 +57,18 @@ public class ProductImageService {
 			throw new ConflictException("Limite de " + MAX_IMAGES_PER_PRODUCT + " imagens por produto atingido.");
 		}
 		ImageValidator.ValidatedImage image = validator.validate(originalFilename, bytes);
+		// Sem EXIF/XMP (ex.: localização GPS da foto) no arquivo público.
+		byte[] clean = ImageMetadataStripper.strip(bytes, image.type());
 		// Nome gerado pelo servidor: nunca usa o nome enviado pelo cliente.
 		String key = "products/" + productId + "/" + UUID.randomUUID() + "." + image.type().extension;
-		storage.store(key, new ByteArrayInputStream(bytes), bytes.length, image.type().contentType);
+		storage.store(key, new ByteArrayInputStream(clean), clean.length, image.type().contentType);
 		AfterTransaction.onRollback(() -> storage.delete(key));
-		ProductImage saved = product.addImage(key, altText.strip(), image.type().contentType, bytes.length,
+		ProductImage saved = product.addImage(key, altText.strip(), image.type().contentType, clean.length,
 				image.width(), image.height());
 		// flush (e não save/merge): mantém a mesma instância da imagem e atribui o id
 		products.flush();
 		audit.record("PRODUCT_IMAGE_ADDED", "product", productId,
-				Map.of("imageId", saved.getId(), "contentType", image.type().contentType, "sizeBytes", bytes.length));
+				Map.of("imageId", saved.getId(), "contentType", image.type().contentType, "sizeBytes", clean.length));
 		return mapper.admin(product, inventory.findById(productId).orElse(null));
 	}
 

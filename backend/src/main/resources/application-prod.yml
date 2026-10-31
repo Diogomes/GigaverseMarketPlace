@@ -3,3 +3,9 @@
 # APP_CORS_ALLOWED_ORIGINS.
 server:
   forward-headers-strategy: framework
+
+# Logs estruturados (JSON no padrão ECS) para o agregador de logs; o MDC inclui requestId.
+logging:
+  structured:
+    format:
+      console: ecs

@@ -13,6 +13,8 @@ import jakarta.persistence.Table;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
+import br.com.gigaverse3d.common.web.RequestIdFilter;
+
 /** Registro imutável de ação relevante. Nunca guardar senhas, tokens ou dados de pagamento em {@code details}. */
 @Entity
 @Table(name = "audit_log")
@@ -53,6 +55,7 @@ public class AuditLog {
 		this.entityType = entityType;
 		this.entityId = entityId;
 		this.details = details;
+		this.requestId = RequestIdFilter.current();
 	}
 
 	@PrePersist

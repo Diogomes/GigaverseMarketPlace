@@ -106,6 +106,18 @@ Template atual do Vite: React 19, TypeScript 7, Vite 8, **oxlint** (lint) + Pret
 - **Dados de demonstração:** pedidos, clientes e métricas fictícios do frontend foram removidos; o painel só mostra dados da API. Permanece apenas o catálogo de demonstração usado para imagens por slug em desenvolvimento (D-T14).
 - **Pendências:** E2E do fluxo administrativo (precisa de conta ADMIN no banco de desenvolvimento) fica para a Fase 11; sessões/limitador seguem em memória (uma instância — D-T16).
 
+### D-T19 — Fase 10: segurança, privacidade e observabilidade
+- **Revisão de autorização automatizada:** `SecurityHardeningTest` lê todas as rotas registradas no Spring e exige 401 sem sessão em toda rota fora da lista pública, e 403 para cliente em toda rota `/admin`. Uma rota nova esquecida no `SecurityConfig` quebra o build.
+- **Cabeçalhos:** CSP `default-src 'none'` nas respostas `/api/**`, Referrer-Policy e Permissions-Policy, além dos padrões do Spring Security. A CSP do frontend vai no servidor web (Fase 12; proposta em `SECURITY.md`).
+- **Limites:** corpo JSON ≤ 256 KB (413 antes do parser); rate limit também em exportação de dados e exclusão de conta.
+- **Uploads:** metadados (EXIF/GPS, XMP, comentários, chunks de texto PNG, EXIF/XMP de WebP) removidos byte a byte, sem recomprimir; o perfil de cor ICC é mantido. Resolve a pendência da D-T15.
+- **Erros e logs:** handler genérico devolve 500 só com o `requestId`; o log de violação de integridade não repete mais a mensagem do PostgreSQL (que trazia valores como e-mail). `X-Request-Id` correlaciona log, auditoria (`audit_log.request_id`) e resposta. Em produção, logs JSON (ECS). Teste garante que senha/token não aparecem na saída.
+- **LGPD na conta do cliente:** cópia dos dados (JSON) e exclusão por **anonimização** — exige senha, recusa com pedidos em andamento, apaga telefone/endereços/tokens/carrinho/etiquetas/notas, troca nome e e-mail, encerra todas as sessões. Pedidos permanecem (obrigação legal) sem e-mail de contato e sem observação; nome e endereço de entrega ficam pelo prazo legal — **a validar com o jurídico (D-P07)**. Notas do CRM ficam fora da cópia automática (pedido formal ao encarregado).
+- **Retenção:** job diário apaga tokens vencidos há mais de 30 dias e carrinhos de visitante expirados.
+- **Backup:** `infra/backup/backup.sh`/`restore.sh` (pg_dump custom, checksum, cifragem `age` opcional, restauração em banco de verificação). Teste real feito em desenvolvimento, com contagens idênticas.
+- **Dependências:** `npm audit` 0; 152 dependências Java na OSV, 0 conhecidas. OWASP dependency-check precisa de chave da NVD → CI na Fase 12.
+- **Sem alegação de conformidade:** documentos marcados como rascunho técnico; pendências legais listadas.
+
 ### D-T12 — Logo no tema claro
 O logo oficial tem fundo preto opaco. Até existir versão transparente (D-P09), é exibido sobre um "chip" escuro em ambos os temas; recortes (emblema/wordmark) foram gerados por redimensionamento, sem distorção.
 

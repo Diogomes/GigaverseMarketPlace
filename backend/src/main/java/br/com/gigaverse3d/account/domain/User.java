@@ -140,6 +140,21 @@ public class User extends TimestampedEntity {
 		this.lockedUntil = null;
 	}
 
+	/**
+	 * Exclusão a pedido do titular: remove identificação e acesso, mantendo a linha (pedidos
+	 * antigos referenciam o usuário). O e-mail original fica livre para um novo cadastro.
+	 */
+	public void anonymize(String placeholderEmail, String unusablePasswordHash, Instant now) {
+		this.email = normalizeEmail(placeholderEmail);
+		this.fullName = "Conta removida";
+		this.passwordHash = Objects.requireNonNull(unusablePasswordHash);
+		this.status = Status.ANONYMIZED;
+		this.deletedAt = now;
+		this.lastLoginAt = null;
+		this.emailVerifiedAt = null;
+		rotateSecurityStamp();
+	}
+
 	public void updateName(String fullName) {
 		this.fullName = Objects.requireNonNull(fullName).strip();
 	}

@@ -16,3 +16,8 @@ storage/
 
 # Logs
 *.log
+
+# Backups locais do banco (contêm dados pessoais)
+backups/
+*.dump
+*.dump.age

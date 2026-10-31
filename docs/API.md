@@ -37,6 +37,13 @@ Convenções:
 | PUT/DELETE | `/account/addresses/{id}` | dono | Endereço de outra pessoa → 404 |
 | POST | `/account/addresses/{id}/default` | dono | Define o principal |
 
+### Privacidade (titular dos dados)
+
+| Método | Rota | Descrição |
+|---|---|---|
+| GET | `/account/privacy/export` | Cópia dos meus dados (JSON em anexo, `no-store`; até 5 por hora; auditado) |
+| POST | `/account/privacy/delete-account` | `{ password }` — anonimiza a conta e encerra a sessão; 400 com senha errada; 409 com pedidos em andamento |
+
 ## Carrinho, checkout e pedidos do cliente
 
 | Método | Rota | Acesso | Descrição |
@@ -106,7 +113,7 @@ Máquina de estados: `PENDING_PAYMENT → PAID | CANCELLED`; `PAID → IN_PRODUC
 | GET | `/admin/audit?action&entityType&entityId&actorId&from&to&page&size` | ADMIN | Trilha de auditoria com autor (nome/e-mail) e detalhes |
 | GET | `/admin/settings` | ADMIN, OPERATOR | Configuração operacional em vigor, somente leitura e sem segredos |
 
-Toda escrita administrativa grava `audit_log` (ação, entidade, ator, resumo — sem senhas, tokens, conteúdo de notas nem termos de busca).
+Toda resposta traz `X-Request-Id` (o mesmo valor fica no log e na auditoria). Toda escrita administrativa grava `audit_log` (ação, entidade, ator, resumo — sem senhas, tokens, conteúdo de notas nem termos de busca).
 
 ## Códigos de resposta testados
 
@@ -117,5 +124,5 @@ Toda escrita administrativa grava `audit_log` (ação, entidade, ator, resumo �
 | 403 | Papel insuficiente (cliente no admin, operador excluindo) ou sem token CSRF |
 | 404 | Recurso inexistente ou não público |
 | 409 | Total do checkout divergente, transição de status inválida, SKU/slug duplicado, versão desatualizada, exclusão com dependências, estoque insuficiente, limite de imagens |
-| 413 | Arquivo acima de 5 MB |
+| 413 | Arquivo acima de 5 MB ou corpo JSON acima de 256 KB |
 | 429 | Excesso de tentativas (login, cadastro, recuperação) — com `Retry-After` |

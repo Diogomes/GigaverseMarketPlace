@@ -1,9 +1,10 @@
 import { ArrowRight, Boxes, Gem, Lamp, Paintbrush, Sparkles, Wrench, type LucideIcon } from 'lucide-react'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { InstagramLink } from '../components/InstagramLink'
 import { ProductCard } from '../components/store/ProductCard'
 import { buttonClass } from '../components/ui/button'
 import { DemoBanner } from '../components/ui/DemoBanner'
+import { Notice } from '../components/ui/Notice'
 import { EmptyState } from '../components/ui/EmptyState'
 import { CardsSkeleton } from '../components/ui/Skeleton'
 import { useCategories, useProducts } from '../api/catalog'
@@ -42,9 +43,16 @@ export function HomePage() {
   const { data: featuredPage, isPending: loadingFeatured, isError } = useProducts({ featured: true, size: 4 })
   const featured = featuredPage?.content ?? []
   const hero = HERO_IMAGES.main
+  // aviso vindo de outra tela (ex.: conta excluída)
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
 
   return (
     <>
+      {notice && (
+        <div className="mx-auto max-w-7xl px-4 pt-4 sm:px-6">
+          <Notice>{notice}</Notice>
+        </div>
+      )}
       <section className="relative isolate overflow-hidden">
         {/* Imagem provisória do pacote de assets; o texto fica em HTML sobre um gradiente do tema. */}
         <img

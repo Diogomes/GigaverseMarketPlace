@@ -69,3 +69,12 @@ Variáveis futuras (registradas para não serem esquecidas): credenciais do gate
 |---|---|---|
 | `VITE_API_BASE_URL` | vazio (mesma origem) | Base da API. **Nunca** coloque segredos em `VITE_*`: vão para o bundle público |
 | `VITE_DEV_API_TARGET` | `http://localhost:8080` | Alvo do proxy `/api` do Vite em desenvolvimento |
+
+## Privacidade e observabilidade (Fase 10)
+
+| Variável / propriedade | Padrão | Descrição |
+|---|---|---|
+| `APP_PRIVACY_RETENTION_CRON` (`app.privacy.retention-cron`) | `0 30 3 * * *` (Recife) | Quando o job de retenção apaga tokens vencidos e carrinhos expirados |
+| `LOGGING_STRUCTURED_FORMAT_CONSOLE` | `ecs` no perfil `prod` | Formato JSON dos logs; deixe vazio para texto |
+| `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`, `BACKUP_AGE_RECIPIENT` | `./backups`, `14`, — | Usadas por `infra/backup/backup.sh` (ver `BACKUP_RESTORE.md`) |
+| `AGE_IDENTITY_FILE`, `RESTORE_CONFIRM` | —, — | Usadas por `infra/backup/restore.sh` |

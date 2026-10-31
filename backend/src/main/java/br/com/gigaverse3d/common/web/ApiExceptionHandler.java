@@ -1,8 +1,10 @@
 package br.com.gigaverse3d.common.web;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.tomcat.util.http.InvalidParameterException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -13,6 +15,8 @@ import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 
@@ -121,7 +125,9 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 	/** Última defesa para unicidade/constraints que escaparam das checagens do serviço. */
 	@ExceptionHandler(DataIntegrityViolationException.class)
 	ResponseEntity<ProblemDetail> dataIntegrity(DataIntegrityViolationException ex) {
-		log.warn("Violação de integridade: {}", ex.getMostSpecificCause().getMessage());
+		// A mensagem do PostgreSQL repete os valores (ex.: "Key (email)=(fulano@…)"): registra só o
+		// código SQLState e a constraint, nunca o texto com dados pessoais.
+		log.warn("Violação de integridade: sqlState={} constraint={}", sqlState(ex), constraintName(ex));
 		return ResponseEntity.status(HttpStatus.CONFLICT)
 			.body(problem(HttpStatus.CONFLICT, "A operação viola uma regra de integridade dos dados."));
 	}
@@ -142,6 +148,42 @@ public class ApiExceptionHandler extends ResponseEntityExceptionHandler {
 	ResponseEntity<ProblemDetail> tooLarge(PayloadTooLargeException ex) {
 		return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE)
 			.body(problem(HttpStatus.CONTENT_TOO_LARGE, ex.getMessage()));
+	}
+
+	/** Parâmetro de URL com codificação inválida (ex.: UTF-8 malformado): erro do cliente, não do servidor. */
+	@ExceptionHandler(InvalidParameterException.class)
+	ResponseEntity<ProblemDetail> invalidParameter(InvalidParameterException ex) {
+		return ResponseEntity.badRequest().body(problem(HttpStatus.BAD_REQUEST, "Parâmetros inválidos na URL."));
+	}
+
+	/**
+	 * Erro inesperado: o cliente recebe só uma mensagem genérica com o código da requisição; o
+	 * stack trace fica no log do servidor (correlacionado pelo mesmo código), nunca na resposta.
+	 */
+	@ExceptionHandler(Exception.class)
+	ResponseEntity<ProblemDetail> unexpected(Exception ex) throws Exception {
+		if (ex instanceof AccessDeniedException || ex instanceof AuthenticationException) {
+			throw ex; // tratadas pelo Spring Security (403/401)
+		}
+		String requestId = RequestIdFilter.current();
+		log.error("Erro inesperado (requestId={})", requestId, ex);
+		ProblemDetail body = problem(HttpStatus.INTERNAL_SERVER_ERROR,
+				"Erro interno. Tente novamente; se persistir, informe o código " + requestId + " ao suporte.");
+		body.setProperty("requestId", requestId);
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
+	}
+
+	private static String sqlState(DataIntegrityViolationException ex) {
+		return ex.getMostSpecificCause() instanceof SQLException sql ? sql.getSQLState() : "n/d";
+	}
+
+	private static String constraintName(DataIntegrityViolationException ex) {
+		for (Throwable t = ex; t != null; t = t.getCause()) {
+			if (t instanceof org.hibernate.exception.ConstraintViolationException c && c.getConstraintName() != null) {
+				return c.getConstraintName();
+			}
+		}
+		return "n/d";
 	}
 
 }

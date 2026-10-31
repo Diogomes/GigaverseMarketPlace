@@ -11,6 +11,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.header.writers.DelegatingRequestMatcherHeaderWriter;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
+import org.springframework.security.web.header.writers.StaticHeadersWriter;
+import org.springframework.security.web.servlet.util.matcher.PathPatternRequestMatcher;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.context.SecurityContextRepository;
@@ -36,6 +40,14 @@ public class SecurityConfig {
 			.cors(Customizer.withDefaults())
 			// Webhooks de pagamento são servidor→servidor: autenticados por assinatura, não por cookie.
 			.csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/v1/payments/webhooks/**"))
+			// Cabeçalhos: nosniff, X-Frame-Options DENY, no-cache e HSTS (só em HTTPS) já vêm do Spring
+			// Security. A API só devolve JSON/CSV: CSP que proíbe tudo e não permite ser embutida.
+			.headers(headers -> headers
+				.referrerPolicy(r -> r.policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+				.permissionsPolicyHeader(p -> p.policy("camera=(), microphone=(), geolocation=(), payment=()"))
+				.addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(
+						PathPatternRequestMatcher.withDefaults().matcher("/api/**"), new StaticHeadersWriter(
+								"Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"))))
 			.httpBasic(basic -> basic.disable())
 			.formLogin(form -> form.disable())
 			.logout(logout -> logout.disable())
