@@ -60,7 +60,7 @@ class ProductionConfigValidatorTest {
 	void failureMessageNamesVariablesButNeverValues() {
 		MockEnvironment env = valid().withProperty("app.auth.frontend-base-url", "http://segredo-interno:9999")
 			.withProperty("spring.mail.host", "");
-		assertThatThrownBy(() -> new ProductionConfigValidator(env).afterPropertiesSet())
+		assertThatThrownBy(() -> ProductionConfigValidator.check(env))
 			.isInstanceOf(IllegalStateException.class)
 			.hasMessageContaining("APP_FRONTEND_BASE_URL")
 			.hasMessageContaining("SMTP_HOST")
@@ -74,6 +74,27 @@ class ProductionConfigValidatorTest {
 		assertThat(ProductionConfigValidator.isPublicHttps("https://loja.local")).isFalse();
 		assertThat(ProductionConfigValidator.isPublicHttps("http://gigaverse3d.com.br")).isFalse();
 		assertThat(ProductionConfigValidator.isPublicHttps("nada")).isFalse();
+	}
+
+	@Test
+	void ignoresNonProductionProfiles() {
+		MockEnvironment env = new MockEnvironment().withProperty("app.auth.frontend-base-url", "http://localhost:5173");
+		env.setActiveProfiles("dev");
+		new ProductionConfigValidator().onApplicationEvent(
+				new org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent(
+						new org.springframework.boot.bootstrap.DefaultBootstrapContext(),
+						new org.springframework.boot.SpringApplication(), new String[0], env));
+	}
+
+	@Test
+	void rejectsInvalidConfigurationWhenProdProfileIsActive() {
+		MockEnvironment env = new MockEnvironment().withProperty("app.auth.frontend-base-url", "http://localhost:5173");
+		env.setActiveProfiles("prod");
+		assertThatThrownBy(() -> new ProductionConfigValidator().onApplicationEvent(
+				new org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent(
+						new org.springframework.boot.bootstrap.DefaultBootstrapContext(),
+						new org.springframework.boot.SpringApplication(), new String[0], env)))
+			.isInstanceOf(IllegalStateException.class);
 	}
 
 }

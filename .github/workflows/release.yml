@@ -1,0 +1,111 @@
+# Publicação: SOMENTE manual (Actions → Release → Run workflow).
+# 1) build-push: gera e publica as imagens no GHCR com tag imutável sha-<commit> (nunca "latest").
+# 2) deploy: só roda se marcado "deploy" E após aprovação no ambiente "production"
+#    (Settings → Environments → production → Required reviewers). Sem segredos configurados, não faz nada.
+# Pré-requisito: o commit precisa ter passado no CI. Detalhes: docs/DEPLOYMENT.md.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: 'Fazer deploy em produção após publicar as imagens (exige aprovação)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build-push:
+    name: Publicar imagens
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      registry: ${{ steps.meta.outputs.registry }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: CI verde neste commit?
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          status=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${GITHUB_SHA}/check-runs?per_page=100" \
+            --jq '[.check_runs[] | select(.name | startswith("Backend") or startswith("Frontend") or startswith("E2E")) | .conclusion] | unique | join(",")')
+          echo "conclusões do CI: ${status:-nenhuma}"
+          [ "$status" = "success" ] || { echo "::error::O CI precisa estar verde neste commit antes de publicar."; exit 1; }
+      - id: meta
+        run: |
+          echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "registry=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ steps.meta.outputs.registry }}/gigaverse3d-api:${{ steps.meta.outputs.tag }}
+          provenance: true
+          sbom: true
+      - uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ steps.meta.outputs.registry }}/gigaverse3d-web:${{ steps.meta.outputs.tag }}
+          provenance: true
+          sbom: true
+
+  deploy:
+    name: Deploy em produção
+    needs: build-push
+    if: inputs.deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment:
+      name: production
+      url: ${{ vars.PUBLIC_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Conferir configuração do ambiente
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ]; then
+            echo "::error::Ambiente 'production' sem DEPLOY_HOST/DEPLOY_USER/DEPLOY_SSH_KEY/DEPLOY_KNOWN_HOSTS. Nada foi publicado."
+            exit 1
+          fi
+      - name: Chave SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      - name: Enviar pilha e scripts (sem segredos; o .env.prod fica só no servidor)
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/gigaverse3d' }}
+        run: |
+          tar czf - docker-compose.prod.yml infra/caddy infra/deploy infra/backup |
+            ssh -i ~/.ssh/deploy "$TARGET" "mkdir -p '$DEPLOY_PATH' && tar xzf - -C '$DEPLOY_PATH'"
+      - name: Deploy (backup → subir → health checks → smoke test; rollback automático)
+        env:
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/gigaverse3d' }}
+          TAG: ${{ needs.build-push.outputs.tag }}
+        run: ssh -i ~/.ssh/deploy "$TARGET" "cd '$DEPLOY_PATH' && bash infra/deploy/deploy.sh '$TAG'"
+      - name: Limpar chave
+        if: always()
+        run: rm -f ~/.ssh/deploy

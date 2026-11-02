@@ -32,6 +32,7 @@ Passo a passo completo (incluindo Windows e `JAVA_HOME`): [docs/LOCAL_SETUP.md](
 - [API](docs/API.md) · [Modelo de dados](docs/DATA_MODEL.md) · [Métricas](docs/METRICS.md) · [Imagens](docs/IMAGE_ASSETS.md)
 - [Segurança](docs/SECURITY.md) · [Mapa de dados pessoais](docs/PRIVACY_DATA_MAP.md) · [Resposta a incidentes](docs/INCIDENT_RESPONSE.md) · [Backup e restauração](docs/BACKUP_RESTORE.md) · [Relatório de testes](docs/TEST_REPORT.md)
 - [Arquitetura](docs/ARCHITECTURE.md) · [Variáveis de ambiente](docs/ENVIRONMENT_VARIABLES.md) · [Setup local](docs/LOCAL_SETUP.md)
+- [Deploy](docs/DEPLOYMENT.md) · [Runbook de operação](docs/OPERATIONS_RUNBOOK.md) · [Checklist de lançamento](docs/GO_LIVE_CHECKLIST.md)
 - [Roadmap](docs/ROADMAP.md) · [Decisões](docs/DECISIONS.md) · [Riscos](docs/RISKS.md) · [Auditoria](docs/PROJECT_AUDIT.md)
 - [Referência visual aprovada](docs/design/REFERENCIA-VISUAL-E-ESPECIFICACAO.md) · [Convenções](CONTRIBUTING.md)
 

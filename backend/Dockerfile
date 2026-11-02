@@ -14,7 +14,8 @@ RUN ./mvnw -q -B -DskipTests package \
  && java -Djarmode=tools -jar target/backend-*.jar extract --layers --launcher --destination /app
 
 FROM eclipse-temurin:21-jre-alpine AS runtime
-RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app -h /app app \
+# correções de segurança do Alpine publicadas depois da imagem base
+RUN apk upgrade --no-cache  && addgroup -S -g 10001 app && adduser -S -u 10001 -G app -h /app app \
  && mkdir -p /data/storage && chown app:app /data/storage
 WORKDIR /app
 COPY --from=build --chown=app:app /app/dependencies/ ./

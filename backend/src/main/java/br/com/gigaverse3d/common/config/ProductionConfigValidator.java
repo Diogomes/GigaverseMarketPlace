@@ -8,30 +8,32 @@ import java.util.Locale;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.context.event.ApplicationEnvironmentPreparedEvent;
+import org.springframework.context.ApplicationListener;
+import org.springframework.core.env.ConfigurableEnvironment;
 import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Component;
+import org.springframework.core.env.Profiles;
 
 /**
  * Recusa subir em produção com configuração insegura ou incompleta. A mensagem cita só NOMES de variáveis,
- * nunca valores (que podem ser segredos). Ausência de DB_URL/DB_USERNAME/DB_PASSWORD/APP_CORS_ALLOWED_ORIGINS
- * já impede a inicialização antes deste ponto (placeholders sem valor padrão).
+ * nunca valores (que podem ser segredos).
+ * <p>
+ * Roda no evento {@link ApplicationEnvironmentPreparedEvent} — antes de criar qualquer bean, portanto antes de
+ * abrir conexão com o banco ou de o Flyway aplicar migrations. Registrado em {@code BackendApplication.main}.
  */
-@Component
-@Profile("prod")
-public class ProductionConfigValidator implements InitializingBean {
+public class ProductionConfigValidator implements ApplicationListener<ApplicationEnvironmentPreparedEvent> {
 
 	private static final Logger log = LoggerFactory.getLogger(ProductionConfigValidator.class);
 
-	private final Environment env;
-
-	public ProductionConfigValidator(Environment env) {
-		this.env = env;
+	@Override
+	public void onApplicationEvent(ApplicationEnvironmentPreparedEvent event) {
+		ConfigurableEnvironment env = event.getEnvironment();
+		if (env.acceptsProfiles(Profiles.of("prod"))) {
+			check(env);
+		}
 	}
 
-	@Override
-	public void afterPropertiesSet() {
+	static void check(Environment env) {
 		List<String> problems = validate(env);
 		if (!problems.isEmpty()) {
 			throw new IllegalStateException("Configuração de produção inválida:\n - " + String.join("\n - ", problems)

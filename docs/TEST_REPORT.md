@@ -82,3 +82,14 @@ cd frontend && npm run lint && npm run typecheck && npm run format:check && npm 
 # E2E: backend (./mvnw spring-boot:run) e frontend (npm run dev) rodando
 cd frontend && npm run e2e
 ```
+
+## 7. Atualização — Fase 12 (2026-11-02)
+
+| Verificação | Resultado |
+|---|---|
+| Backend `mvnw verify` | **213 testes, 0 falhas** (+9 de `ProductionConfigValidatorTest`); linhas 91,5 % · ramos 68,0 % |
+| Frontend | lint, tipos, prettier ok; 70 testes; build ok |
+| E2E (dev, código final) | 13/13 |
+| Workflows (`ci.yml`, `release.yml`) | `actionlint` 1.7.7 sem apontamentos; scripts com `shellcheck` 0.10 sem apontamentos. **Não executados no GitHub** |
+| Segurança | `npm audit --omit=dev`: 0; Trivy (repo: dependências + segredos ≥ HIGH; imagens ≥ HIGH com correção): 0 após `apk upgrade` |
+| Simulação da pilha de produção | ver `DEPLOYMENT.md` §9: smoke 14/14, fluxo de conta pelo proxy, e-mail entregue, rollback automático, restauração, fail-fast sem vazar segredos, `X-Forwarded-For` forjado não burla o limitador |

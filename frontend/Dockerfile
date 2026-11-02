@@ -13,6 +13,10 @@ RUN npm run build \
  && rm -f dist/brand/gigaverse-logo-original.png dist/brand/gigaverse-logo-512.png
 
 FROM nginxinc/nginx-unprivileged:1.29-alpine AS runtime
+# aplica correções de segurança do Alpine publicadas depois da imagem base (ex.: brotli-libs CVE-2026-111497)
+USER root
+RUN apk upgrade --no-cache
+USER 101
 # o template vira /etc/nginx/conf.d/default.conf na inicialização (envsubst da imagem oficial)
 COPY --chown=nginx:nginx nginx/default.conf.template /etc/nginx/templates/default.conf.template
 COPY --from=build --chown=nginx:nginx /src/dist /usr/share/nginx/html

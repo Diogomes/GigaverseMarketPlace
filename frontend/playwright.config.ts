@@ -10,10 +10,11 @@ export default defineConfig({
   timeout: 60_000,
   expect: { timeout: 10_000 },
   workers: 1,
-  reporter: [['list']],
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : [['list']],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:5173',
-    channel: 'msedge',
+    // Local: Edge instalado. CI: E2E_CHANNEL=chromium usa o Chromium baixado pelo Playwright.
+    channel: process.env.E2E_CHANNEL === 'chromium' ? undefined : (process.env.E2E_CHANNEL ?? 'msedge'),
     headless: true,
     locale: 'pt-BR',
     screenshot: 'only-on-failure',

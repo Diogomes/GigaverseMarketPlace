@@ -3,8 +3,8 @@ package br.com.gigaverse3d.mail;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.mail.SimpleMailMessage;
@@ -17,7 +17,7 @@ public class MailConfig {
 
 	/** Com SMTP configurado (spring.mail.host): Mailpit em dev, provedor real em produção. */
 	@Bean
-	@ConditionalOnProperty(name = "spring.mail.host")
+	@ConditionalOnExpression("!'${spring.mail.host:}'.isBlank()")
 	EmailSender smtpEmailSender(JavaMailSender mailSender, @Value("${app.mail.from}") String from) {
 		return message -> {
 			SimpleMailMessage mail = new SimpleMailMessage();

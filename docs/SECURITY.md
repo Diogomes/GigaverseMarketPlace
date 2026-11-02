@@ -70,8 +70,18 @@ Checklist (repetir a cada deploy de produção e a cada 6 meses):
 ## 5. Pendências e riscos residuais
 
 - **Teste de intrusão independente** antes de campanhas de tráfego.
-- Sessões e limitador de tentativas em memória: adequados a **uma instância**; com mais instâncias, Spring Session JDBC/Redis (Fase 12).
-- Sem rate limit dedicado no checkout e nas rotas administrativas (mitigado por sessão, CSRF, idempotência e papéis). Avaliar WAF/limite no proxy na Fase 12.
-- OWASP dependency-check com chave da NVD e Dependabot/Renovate no CI (Fase 12).
-- CSP do frontend depende do servidor web (Fase 12).
+- Sessões e limitador de tentativas em memória: adequados a **uma instância** (a pilha de produção roda uma); com mais instâncias, Spring Session JDBC/Redis.
+- Sem rate limit dedicado no checkout e nas rotas administrativas (mitigado por sessão, CSRF, idempotência e papéis). Avaliar WAF/limite no proxy (Caddy/CDN) quando houver tráfego.
+- ✅ CI com `dependency-review` (PR), `npm audit` e Trivy (dependências, segredos e imagens). Pendente: Dependabot/Renovate para PRs automáticos de atualização.
+- ✅ CSP da loja no nginx (`script-src 'self'`, sem inline — o script de tema virou `public/theme-init.js`; `frame-ancestors 'none'`, `object-src 'none'`). `style-src` ainda permite `'unsafe-inline'` (estilos inline do React).
 - E-mails de marketing ainda não existem; quando existirem, cada mensagem deve ter link de descadastro sem login (ver `PRIVACY_DATA_MAP.md`).
+
+## 6. Hardening da produção (Fase 12)
+
+- **Containers**: API como `uid 10001` com raiz somente leitura e `/tmp` em tmpfs; loja em nginx sem privilégios (`uid 101`); todos com `cap_drop: ALL` e `no-new-privileges`. O Caddy roda como `uid 0` com apenas `NET_BIND_SERVICE` (risco residual baixo, R16).
+- **Rede**: só o Caddy publica portas (80/443); banco e API apenas em redes internas; `/actuator/*` responde 404 para fora.
+- **Proxy**: o Caddy descarta `X-Forwarded-*` vindos do cliente e envia o IP real — o limitador de tentativas depende disso. A API nunca deve ser exposta diretamente (confia em `X-Forwarded-*`).
+- **TLS**: Let's Encrypt automático, HSTS de 1 ano, HTTP→HTTPS.
+- **Configuração**: o perfil `prod` recusa subir com URL pública/CORS não-HTTPS, cookie sem `Secure`, sem SMTP ou com S3 incompleto, **antes** de conectar ao banco; a mensagem nunca contém valores.
+- **Imagens**: `apk upgrade` no build (correções do Alpine posteriores à base); Trivy no CI bloqueia CVEs críticas com correção disponível.
+- **Publicação**: só manual, com aprovação no ambiente `production`; tags imutáveis com SBOM.

@@ -15,7 +15,7 @@ Cada fase termina com resumo, comandos executados, resultados reais de testes e 
 | 09 | Admin e CRM | Dashboard com métricas reais, produtos/estoque, pedidos, clientes, notas, etiquetas, auditoria, bootstrap seguro do admin | Definições de métricas (D-P12) | ✅ Aprovada (2026-10-31); métricas seguem a proposta D-P12 |
 | 10 | Segurança, LGPD, observabilidade | `SECURITY.md`, `PRIVACY_DATA_MAP.md`, `INCIDENT_RESPONSE.md`, `BACKUP_RESTORE.md`, logs estruturados, backup/restauração | Revisão jurídica (D-P07) | ✅ Aprovada (2026-11-02); itens jurídicos listados em `PRIVACY_DATA_MAP.md` §3 |
 | 11 | Testes e qualidade | Suíte completa, E2E Playwright, acessibilidade, performance, `TEST_REPORT.md` | — | ✅ Aprovada (2026-11-02) — 204 testes backend · 70 frontend · 13 E2E; 4 bugs corrigidos |
-| 12 | Deploy e lançamento | Dockerfiles prod, CI/CD com aprovação manual, runbooks, `DEPLOYMENT.md`, `GO_LIVE_CHECKLIST.md` | Hospedagem (D-P03), domínio (D-P08) | Pendente |
+| 12 | Deploy e lançamento | Dockerfiles prod, CI/CD com aprovação manual, runbooks, `DEPLOYMENT.md`, `GO_LIVE_CHECKLIST.md` | Hospedagem (D-P03), domínio (D-P08) | ✅ Concluída e validada em simulação local — **nada publicado**; lançamento depende das decisões em `GO_LIVE_CHECKLIST.md` §1 |
 
 ## Pré-requisitos de ambiente
 

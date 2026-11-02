@@ -2,10 +2,34 @@
 # padrão. A aplicação não sobe se faltar DB_URL, DB_USERNAME, DB_PASSWORD ou
 # APP_CORS_ALLOWED_ORIGINS.
 server:
+  # Confia em X-Forwarded-* porque a API só é alcançável pelo proxy da própria pilha (nginx ← Caddy),
+  # que sobrescreve esses cabeçalhos. NUNCA publique a porta 8080 diretamente na internet.
   forward-headers-strategy: framework
+
+# E-mail transacional (D-P05): provedor SMTP com STARTTLS. Sem SMTP_HOST a API não sobe
+# (a menos de APP_MAIL_ALLOW_DISABLED=true) — ver ProductionConfigValidator.
+spring:
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_PASSWORD:}
+    properties:
+      mail.smtp.auth: ${SMTP_AUTH:true}
+      mail.smtp.starttls.enable: ${SMTP_STARTTLS:true}
+      mail.smtp.starttls.required: ${SMTP_STARTTLS:true}
+      mail.smtp.connectiontimeout: 10000
+      mail.smtp.timeout: 10000
+      mail.smtp.writetimeout: 10000
 
 # Logs estruturados (JSON no padrão ECS) para o agregador de logs; o MDC inclui requestId.
 logging:
   structured:
     format:
       console: ecs
+
+# Falha do provedor de e-mail não deve derrubar a saúde da loja (alerta vem dos logs de envio).
+management:
+  health:
+    mail:
+      enabled: false

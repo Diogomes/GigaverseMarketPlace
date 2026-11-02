@@ -1,0 +1,119 @@
+# Pilha de PRODUÇÃO autocontida (um servidor/VPS com Docker). Portável: as mesmas imagens servem para PaaS.
+# Uso:  docker compose -f docker-compose.prod.yml --env-file .env.prod up -d
+# Referência: docs/DEPLOYMENT.md. Variáveis obrigatórias falham com mensagem (sintaxe ${VAR:?...}).
+name: gigaverse3d-prod
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ['no-new-privileges:true']
+  cap_drop: [ALL]
+  logging:
+    driver: json-file
+    options: { max-size: '20m', max-file: '5' }
+
+services:
+  postgres:
+    <<: *hardening
+    image: postgres:17-alpine
+    # o entrypoint do postgres troca de usuário (root → postgres): precisa destas capacidades
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gigaverse3d}
+      POSTGRES_USER: ${POSTGRES_USER:-gigaverse3d}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD com uma senha forte gerada}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    # sem porta publicada: só a API (rede interna) acessa o banco
+    networks: [backend]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    <<: *hardening
+    image: ${IMAGE_REGISTRY:-gigaverse3d}/gigaverse3d-api:${IMAGE_TAG:-local}
+    build: ./backend
+    read_only: true
+    tmpfs: ['/tmp']
+    depends_on:
+      postgres: { condition: service_healthy }
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-gigaverse3d}
+      DB_USERNAME: ${POSTGRES_USER:-gigaverse3d}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+      APP_FRONTEND_BASE_URL: ${PUBLIC_BASE_URL:?defina PUBLIC_BASE_URL como https://loja.seudominio.com.br}
+      APP_CORS_ALLOWED_ORIGINS: ${PUBLIC_BASE_URL:?defina PUBLIC_BASE_URL}
+      SESSION_COOKIE_SECURE: 'true'
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-true}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-true}
+      APP_MAIL_FROM: ${APP_MAIL_FROM:-}
+      APP_MAIL_ALLOW_DISABLED: ${APP_MAIL_ALLOW_DISABLED:-false}
+      APP_STORAGE_TYPE: ${APP_STORAGE_TYPE:-local}
+      APP_STORAGE_S3_BUCKET: ${APP_STORAGE_S3_BUCKET:-}
+      APP_STORAGE_S3_REGION: ${APP_STORAGE_S3_REGION:-}
+      APP_STORAGE_S3_ENDPOINT: ${APP_STORAGE_S3_ENDPOINT:-}
+      APP_STORAGE_PUBLIC_BASE_URL: ${APP_STORAGE_PUBLIC_BASE_URL:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      APP_PAYMENTS_PROVIDER: ${APP_PAYMENTS_PROVIDER:-MANUAL}
+      APP_SHIPPING_ORIGIN_POSTAL_CODE: ${APP_SHIPPING_ORIGIN_POSTAL_CODE:-53625816}
+      # primeiro ADMIN: definir só na primeira subida e remover depois (docs/OPERATIONS_RUNBOOK.md §2)
+      APP_BOOTSTRAP_ADMIN_EMAIL: ${APP_BOOTSTRAP_ADMIN_EMAIL:-}
+      APP_BOOTSTRAP_ADMIN_PASSWORD: ${APP_BOOTSTRAP_ADMIN_PASSWORD:-}
+      APP_BOOTSTRAP_ADMIN_NAME: ${APP_BOOTSTRAP_ADMIN_NAME:-Administrador}
+      JAVA_TOOL_OPTIONS: ${JAVA_TOOL_OPTIONS:--XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError}
+    volumes:
+      - media:/data/storage
+    networks: [backend, frontend]
+
+  web:
+    <<: *hardening
+    image: ${IMAGE_REGISTRY:-gigaverse3d}/gigaverse3d-web:${IMAGE_TAG:-local}
+    build: ./frontend
+    depends_on:
+      api: { condition: service_healthy }
+    environment:
+      API_UPSTREAM: http://api:8080
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?defina PUBLIC_BASE_URL}
+    networks: [frontend]
+
+  # Borda: TLS automático (Let's Encrypt) e redirecionamento HTTP→HTTPS.
+  caddy:
+    <<: *hardening
+    image: caddy:2.10-alpine
+    cap_add: [NET_BIND_SERVICE]
+    depends_on:
+      web: { condition: service_healthy }
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?defina SITE_ADDRESS com o domínio, como loja.seudominio.com.br}
+    ports:
+      - '${HTTP_BIND:-0.0.0.0}:80:80'
+      - '${HTTP_BIND:-0.0.0.0}:443:443'
+    volumes:
+      - ${CADDYFILE:-./infra/caddy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [frontend]
+
+  # Somente na simulação local (perfil "sim"): captura e-mails em vez de enviar.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    profiles: [sim]
+    networks: [backend]
+
+networks:
+  backend:
+  frontend:
+
+volumes:
+  postgres-data:
+  media:
+  caddy-data:
+  caddy-config:

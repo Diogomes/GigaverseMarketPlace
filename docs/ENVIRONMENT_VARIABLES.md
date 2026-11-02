@@ -1,6 +1,8 @@
 # Variáveis de ambiente
 
-Nunca versionar `.env`. Em produção, usar o secret manager da hospedagem (decisão D-P03).
+Nunca versionar `.env`/`.env.prod`. Em produção, usar o secret manager da hospedagem ou um `.env.prod` só no servidor (`chmod 600`) — modelo em [`.env.prod.example`](../.env.prod.example), pilha em `docker-compose.prod.yml` (ver `DEPLOYMENT.md`).
+
+**Validação na inicialização (perfil `prod`)**: `ProductionConfigValidator` roda antes de qualquer conexão com o banco e recusa subir se `APP_FRONTEND_BASE_URL` ou `APP_CORS_ALLOWED_ORIGINS` não forem HTTPS públicos, se `SESSION_COOKIE_SECURE=false`, se faltar `SMTP_HOST` (salvo `APP_MAIL_ALLOW_DISABLED=true`), se `APP_MAIL_FROM` usar domínio `.local` ou se `s3` estiver incompleto. A mensagem lista os **nomes** das variáveis, nunca os valores.
 
 ## Backend
 
@@ -28,18 +30,20 @@ Nunca versionar `.env`. Em produção, usar o secret manager da hospedagem (deci
 
 | Variável | Obrigatória | Padrão | Descrição |
 |---|---|---|---|
-| `APP_FRONTEND_BASE_URL` | sim em prod | `http://localhost:5173` | Base dos links enviados por e-mail (ex.: redefinição de senha) |
+| `APP_FRONTEND_BASE_URL` | **sim em prod** (HTTPS público) | `http://localhost:5173` | Base dos links enviados por e-mail e do sitemap. No `docker-compose.prod.yml` vem de `PUBLIC_BASE_URL` |
 | `SESSION_TIMEOUT` | não | `2h` | Inatividade até a sessão expirar |
-| `APP_MAIL_FROM` | sim em prod | `Gigaverse3D <nao-responda@gigaverse3d.local>` | Remetente |
-| `SMTP_HOST` / `SMTP_PORT` | dev: não | `localhost` / `1025` (Mailpit) | SMTP do perfil `dev` |
-| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | prod: quando houver provedor (D-P05) | — | SMTP do provedor. **Senha é segredo.** Sem host configurado, os e-mails não são enviados (só registra destinatário mascarado e assunto) |
+| `APP_MAIL_FROM` | **sim em prod** | `Gigaverse3D <nao-responda@gigaverse3d.local>` | Remetente (domínio verificado no provedor, com SPF/DKIM/DMARC) |
+| `SMTP_HOST` / `SMTP_PORT` | **sim em prod** (D-P05) | dev: `localhost` / `1025` (Mailpit); prod: — / `587` | Servidor SMTP do provedor |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | prod: conforme provedor | — | Credenciais SMTP. **Senha é segredo** |
+| `SMTP_AUTH` / `SMTP_STARTTLS` | não | `true` / `true` (prod) | Autenticação e STARTTLS **obrigatório** |
+| `APP_MAIL_ALLOW_DISABLED` | não | `false` | `true` permite subir em prod **sem** e-mail (só registra destinatário mascarado e assunto). Decisão consciente: recuperação de senha deixa de funcionar |
 | `APP_BOOTSTRAP_ADMIN_EMAIL` / `_PASSWORD` / `_NAME` | só na 1ª subida | — | Cria o primeiro ADMIN se não existir nenhum. **Senha é segredo**; remova as variáveis depois |
 
 ### Armazenamento de imagens
 
 | Variável | Obrigatória | Padrão | Descrição |
 |---|---|---|---|
-| `APP_STORAGE_TYPE` | não | `local` | `local` (disco; só dev/test) ou `s3` (produção) |
+| `APP_STORAGE_TYPE` | não | `local` | `local` (disco — em prod só com volume persistente com backup e **uma** instância; a API avisa no log) ou `s3` |
 | `APP_STORAGE_LOCAL_ROOT` | não | `./storage` | Pasta do modo local (ignorada pelo Git) |
 | `APP_STORAGE_S3_BUCKET` | se `s3` | — | Bucket |
 | `APP_STORAGE_S3_REGION` | se `s3` | — | Região (ex.: `sa-east-1`; R2 usa `auto`) |
@@ -52,7 +56,23 @@ O backend falha na inicialização com mensagem clara se `APP_STORAGE_TYPE=s3` s
 
 Valores fixos em `application.yml` (alterar exige deploy): `app.store.currency=BRL`, `app.store.payment-methods=PIX,CARD`.
 
-Variáveis futuras (registradas para não serem esquecidas): credenciais do gateway de pagamento e segredo de webhook (Fase 06, D-P01), provedor de frete (D-P02), e-mail transacional (Fase 05/12, D-P05), storage S3 (Fase 04/12, D-P04).
+Variáveis futuras (registradas para não serem esquecidas): credenciais do gateway de pagamento e segredo de webhook (D-P01), provedor de frete (D-P02).
+
+## Pilha de produção (`docker-compose.prod.yml`)
+
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `SITE_ADDRESS` | **sim** | Domínio atendido pelo Caddy (ex.: `loja.seudominio.com.br`); certificado Let's Encrypt automático |
+| `PUBLIC_BASE_URL` | **sim** | `https://` + domínio; vira `APP_FRONTEND_BASE_URL`, `APP_CORS_ALLOWED_ORIGINS` e o sitemap do `robots.txt` |
+| `IMAGE_REGISTRY` / `IMAGE_TAG` | sim | Ex.: `ghcr.io/diogomes` / `sha-1a2b3c4` (tag imutável do CI; `latest` é recusado pelo `deploy.sh`) |
+| `POSTGRES_DB` / `POSTGRES_USER` | não | `gigaverse3d` / `gigaverse3d` |
+| `POSTGRES_PASSWORD` | **sim (segredo)** | Senha gerada (`openssl rand -base64 32`); o banco não publica porta |
+| `HTTP_BIND` | não | Interface das portas 80/443 (padrão `0.0.0.0`; a simulação usa `127.0.0.1`) |
+| `CADDYFILE` | não | `./infra/caddy/Caddyfile` (prod) ou `Caddyfile.local` (simulação, CA interna) |
+| `JAVA_TOOL_OPTIONS` | não | Padrão `-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError` |
+| `ENV_FILE`, `STATE_DIR`, `WAIT_TIMEOUT`, `SKIP_PULL`, `SMOKE_CURL_OPTS` | não | Ajustes de `infra/deploy/*.sh` (padrões `.env.prod`, `.deploy`, `240`s) |
+
+Imagem da loja (`web`, nginx): `API_UPSTREAM` (padrão `http://api:8080`) e `PUBLIC_BASE_URL`, lidas na inicialização do container.
 
 ## Docker Compose (dev)
 

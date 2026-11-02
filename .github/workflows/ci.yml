@@ -1,0 +1,158 @@
+# Integração contínua: roda em todo push para master e em todo pull request.
+# Nada aqui publica imagens nem faz deploy (ver release.yml).
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (testes + cobertura)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      # Testcontainers usa o Docker do runner (Postgres e S3Mock descartáveis)
+      - run: ./mvnw -B -ntp verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: backend-relatorios
+          path: |
+            backend/target/site/jacoco/
+            backend/target/surefire-reports/
+          retention-days: 14
+
+  frontend:
+    name: Frontend (lint, tipos, testes, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: npm run test:coverage
+      - run: npm run build
+
+  e2e:
+    name: E2E (Playwright, ambiente dev descartável)
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    timeout-minutes: 30
+    env:
+      CI: 'true'
+      E2E_CHANNEL: chromium
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Banco e Mailpit (docker compose de desenvolvimento, só neste runner)
+        run: docker compose up -d --wait
+      - name: Backend (perfil dev, catálogo de demonstração)
+        working-directory: backend
+        run: |
+          ./mvnw -B -ntp -q -DskipTests package
+          nohup java -jar target/backend-*.jar > ../backend.log 2>&1 &
+          for _ in $(seq 1 60); do curl -fs http://localhost:8080/actuator/health && exit 0; sleep 2; done
+          cat ../backend.log; exit 1
+      - name: Frontend (Vite)
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          nohup npm run dev > ../vite.log 2>&1 &
+          for _ in $(seq 1 30); do curl -fs http://localhost:5173 >/dev/null && exit 0; sleep 1; done
+          cat ../vite.log; exit 1
+      - name: Playwright
+        working-directory: frontend
+        run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-falhas
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            backend.log
+          retention-days: 7
+
+  security:
+    name: Dependências, segredos e imagens
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Revisão de dependências do PR (licenças e vulnerabilidades novas)
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+      - name: npm audit (dependências de produção)
+        working-directory: frontend
+        run: npm audit --omit=dev --audit-level=high
+      - name: Vulnerabilidades (pom.xml, package-lock.json) e segredos no repositório
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: fs
+          scanners: vuln,secret
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Build das imagens de produção (sem publicar)
+        run: |
+          docker build -t gigaverse3d-api:ci ./backend
+          docker build -t gigaverse3d-web:ci ./frontend
+      - name: Vulnerabilidades da imagem da API
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: gigaverse3d-api:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Vulnerabilidades da imagem da loja
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: gigaverse3d-web:ci
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'

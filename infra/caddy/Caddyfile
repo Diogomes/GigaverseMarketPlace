@@ -1,0 +1,13 @@
+# Produção: certificado público automático (Let's Encrypt) para SITE_ADDRESS.
+# O DNS do domínio precisa apontar para o servidor e as portas 80/443 precisam estar abertas.
+# Sem trusted_proxies: X-Forwarded-For/Proto enviados pelo cliente são descartados e o Caddy usa o IP real
+# (o limitador de tentativas da API depende disso). Aviso de expiração de certificado: e-mail opcional na conta ACME.
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy web:8080
+}

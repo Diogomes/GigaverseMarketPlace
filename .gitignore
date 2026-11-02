@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!.env.prod.example
 *.local
 
 # Sistema / editores
@@ -21,3 +22,7 @@ storage/
 backups/
 *.dump
 *.dump.age
+
+# Estado dos scripts de deploy (tags em uso) — só no servidor
+.deploy/
+.deploy-sim/

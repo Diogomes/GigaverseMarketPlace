@@ -118,6 +118,15 @@ Template atual do Vite: React 19, TypeScript 7, Vite 8, **oxlint** (lint) + Pret
 - **Dependências:** `npm audit` 0; 152 dependências Java na OSV, 0 conhecidas. OWASP dependency-check precisa de chave da NVD → CI na Fase 12.
 - **Sem alegação de conformidade:** documentos marcados como rascunho técnico; pendências legais listadas.
 
+### D-T20 — Fase 12: empacotamento, CI/CD e deploy
+- **Portabilidade antes do fornecedor:** duas imagens OCI (API e loja) + `docker-compose.prod.yml` autocontido (Caddy, nginx, API, Postgres). Funciona num VPS com Docker hoje; em PaaS/cloud as mesmas imagens servem, trocando só o passo de deploy. Nenhum serviço contratado (D-P03, D-P04, D-P05, D-P08 pendentes).
+- **Mesma origem** (loja e `/api` no mesmo domínio via nginx): cookies `Secure/HttpOnly/SameSite=Lax` e CSRF sem CORS entre domínios.
+- **TLS na borda com Caddy** (certificado automático); o nginx da loja aplica CSP e cache (`/assets` imutável, `index.html` sem cache).
+- **Validação de configuração de produção** como listener do `ApplicationEnvironmentPreparedEvent`: falha antes de qualquer bean (banco/Flyway).
+- **E-mail em prod mapeado por `SMTP_*`** (antes só o perfil dev mapeava `SMTP_HOST`; em prod o e-mail não seria enviado). Com host vazio, cai no registrador de e-mails (nunca um SMTP com host em branco). Saúde do e-mail fora do health check.
+- **Deploy por script** (`infra/deploy/deploy.sh`): backup → subir com `--wait` → smoke test → rollback automático só se o esquema não mudou; com migration nova, rollback do banco é decisão humana.
+- **CI/CD no GitHub Actions**: CI em todo push/PR (inclui E2E em ambiente descartável); *Release* só manual, exige CI verde e aprovação no ambiente `production`. Validados com actionlint/shellcheck; **ainda não executados no GitHub**.
+
 ### D-T12 — Logo no tema claro
 O logo oficial tem fundo preto opaco. Até existir versão transparente (D-P09), é exibido sobre um "chip" escuro em ambos os temas; recortes (emblema/wordmark) foram gerados por redimensionamento, sem distorção.
 

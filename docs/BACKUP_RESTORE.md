@@ -32,6 +32,10 @@ O backup recusa arquivo vazio ou sem a assinatura `PGDMP`. A restauração confe
 
 **Teste realizado em 31/10/2026 (ambiente de desenvolvimento):** backup de 96 KB → restaurado em `gigaverse3d_restore_check` → migration V8, `users` 23, `products` 10, `orders` 8, `audit_log` 67, idênticos à origem. Banco de verificação apagado depois.
 
+Imagens de produtos (storage `local`): `infra/backup/backup-media.sh` (tar.gz do volume `media`, com sha256 e cifragem opcional). Agendamento e cópia fora do servidor: `OPERATIONS_RUNBOOK.md` §4. O `deploy.sh` faz backup do banco automaticamente antes de cada deploy.
+
+**Teste realizado em 02/11/2026 (simulação da pilha de produção):** backup pré-deploy de 88 KB → restaurado em `gigaverse3d_restore_check` → migration V8, contagens conferidas.
+
 ## Restaurar em incidente (produção)
 
 1. Colocar a loja em manutenção (evita pedidos novos durante a troca).
