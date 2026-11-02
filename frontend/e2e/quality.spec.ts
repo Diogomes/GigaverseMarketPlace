@@ -120,7 +120,9 @@ test('falha de rede no catálogo mostra erro e permite tentar de novo', async ({
   })
   block = false
   await page.getByRole('button', { name: 'Tentar novamente' }).click()
-  await expect(page.getByRole('link', { name: PRODUCT.name }).first()).toBeVisible()
+  // não depende de um produto específico: o banco de dev acumula produtos criados por outros testes
+  await expect(page.getByText(/\d+ produtos? encontrados?/)).toBeVisible()
+  await expect(page.getByText('Não foi possível carregar os produtos')).toHaveCount(0)
 })
 
 test('API indisponível (503) não quebra a página de produto', async ({ page }) => {

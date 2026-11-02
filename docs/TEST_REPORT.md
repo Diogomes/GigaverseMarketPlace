@@ -93,3 +93,43 @@ cd frontend && npm run e2e
 | Workflows (`ci.yml`, `release.yml`) | `actionlint` 1.7.7 sem apontamentos; scripts com `shellcheck` 0.10 sem apontamentos. **Não executados no GitHub** |
 | Segurança | `npm audit --omit=dev`: 0; Trivy (repo: dependências + segredos ≥ HIGH; imagens ≥ HIGH com correção): 0 após `apk upgrade` |
 | Simulação da pilha de produção | ver `DEPLOYMENT.md` §9: smoke 14/14, fluxo de conta pelo proxy, e-mail entregue, rollback automático, restauração, fail-fast sem vazar segredos, `X-Forwarded-For` forjado não burla o limitador |
+
+## 8. Ampliação da cobertura — compra e administração (2026-11-02)
+
+Todos os cenários usam **dados fictícios** (contas `e2e-…@exemplo.com`, produtos "… Fictício" com preço e estoque definidos no próprio teste) e só rodam contra o ambiente local/CI.
+
+| Camada | Antes | Agora |
+|---|---|---|
+| Backend (`mvnw verify`) | 213 testes · linhas 91,5 % · ramos 68,0 % | **263 testes, 0 falhas** · linhas **92,6 %** · ramos **71,5 %** (carrinho 97 %/91 %, frete 100 %/92 %, estoque 91 %/85 %, pedidos 94 %/73 %) |
+| Frontend (Vitest) | 70 testes | **91 testes, 0 falhas** · linhas 69,4 % |
+| E2E (Playwright) | 13 cenários | **25 cenários, 0 falhas** |
+
+### Unitários novos — backend (domínio puro, sem banco)
+| Arquivo | O que garante |
+|---|---|
+| `unit/MoneyAndTimeTest` | 2 casas e arredondamento bancário; dia comercial no fuso de Recife (UTC−3) |
+| `unit/CatalogInventoryDomainTest` | produto nasce rascunho/invisível; preço promocional; ordem de imagens/opções; entrada de estoque; disponível = saldo − reservado; nunca abaixo do reservado nem negativo; estoque baixo |
+| `cart/service/PricingTest` | preço = promoção + acréscimos das opções; exatamente uma opção por grupo (falta, duplicada, de outro produto); limite por estoque disponível, teto 99, sob encomenda até 10, personalizado bloqueado; produto rascunho ou categoria inativa indisponíveis; preço sempre do servidor |
+| `unit/OrderCartShippingDomainTest` | totais (itens + frete); histórico completo até "Entregue"; cancelamento com motivo; valores congelados após pagamento; ciclo do pagamento; linha do carrinho igual independente da ordem das opções; limites de quantidade; faixas de CEP (primeira que casa, limites inclusivos, CEP inválido), retirada opcional |
+| `unit/AccountDomainTest` | e-mail normalizado; bloqueio após 5 falhas e desbloqueio; troca de senha/papel/desativação renovam o carimbo de sessão; anonimização; token de redefinição de uso único e com prazo |
+
+### Integração nova — backend
+`order/PurchaseJourneyApiTest`: jornada completa só pela API — admin cadastra produto com opções e promoção e lança estoque → vitrine sem expor saldo → carrinho (2 × R$ 220) → endereço em PE → frete R$ 15 → checkout cartão R$ 455 → baixa de estoque com movimento `SALE` ligado ao pedido → admin confirma pagamento → produção → envio com rastreio → entrega → cliente vê o mesmo histórico → e-mail e auditoria. Segundo cenário: um cliente esgota o estoque, outro não consegue comprar, reposição volta a vender, arquivamento tira da loja.
+
+### Unitários novos — frontend
+| Arquivo | O que garante |
+|---|---|
+| `pages/store/CartPage.test.tsx` | itens, opções e subtotal do servidor; trocar quantidade (PUT) e remover (DELETE) atualizam o total; problema do item (sem estoque) visível; carrinho vazio; carrinho do visitante com "Entrar para finalizar" |
+| `pages/auth/schemas.test.ts` | regras de cadastro, login, recuperação e redefinição de senha |
+| `lib/api.test.ts` | cookies de sessão; erros `problem+json` com campos; mensagens para 403/429/502; aviso de sessão expirada só fora de `/auth`; CSRF buscado, enviado e renovado após 403; multipart; `Idempotency-Key` |
+
+### E2E novos
+| Arquivo | Cenário |
+|---|---|
+| `purchase.spec.ts` | entrega + cartão com 3 produtos, troca de quantidade, remoção, frete e total exatos (R$ 165,00) e baixa de estoque conferida na API · último item esgota, outro visitante vê "esgotado", cancelamento devolve · preço alterado pelo admin com item no carrinho → vale o novo · sob encomenda (sem estoque) · visitante é levado ao login no checkout e o carrinho sobrevive |
+| `admin-catalog.spec.ts` | validação do formulário de produto (campos obrigatórios, SKU, promoção ≥ preço) · SKU duplicado recusado pelo servidor · rascunho invisível → ativar publica → arquivar tira do ar · upload de imagem com texto alternativo (painel e loja) · nova categoria disponível no cadastro · cancelamento de pedido **já pago** pelo admin com motivo obrigatório devolve o estoque · CRM: busca do cliente, nota interna e etiqueta |
+| `api.ts` | apoio: cria produtos/estoque e altera preço pela API administrativa com a sessão e o CSRF do navegador |
+
+A pasta `e2e/` passou a ser verificada pelo `npm run typecheck` (`tsconfig.e2e.json`).
+
+**Observação:** os cenários criam produtos e contas no banco de **desenvolvimento**; o catálogo local fica com muitos "… Fictício". Para limpar: `docker compose down -v` (apaga o banco local; o seed de demonstração volta na próxima subida — será preciso recriar o admin de teste). No CI o banco é descartável a cada execução.
