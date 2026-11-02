@@ -35,3 +35,8 @@ app:
       - { name: "Demais regiões", from-postal-code: "00000000", to-postal-code: "99999999", price: 39.00, min-days: 6, max-days: 12 }
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  auth:
+    rate-limits:
+      # Só em dev: a suíte E2E cria várias contas a partir de 127.0.0.1. Produção mantém os padrões (10 cadastros/IP).
+      register-per-ip: ${APP_AUTH_REGISTER_PER_IP:100}
+      login-per-ip: ${APP_AUTH_LOGIN_PER_IP:200}

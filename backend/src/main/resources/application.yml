@@ -75,6 +75,8 @@ app:
     reset-token-minutes: 30
   mail:
     from: ${APP_MAIL_FROM:Gigaverse3D <nao-responda@gigaverse3d.local>}
+    # Produção recusa subir sem SMTP; true permite subir sem e-mail (só com decisão consciente).
+    allow-disabled: ${APP_MAIL_ALLOW_DISABLED:false}
   # Primeiro administrador: defina APP_BOOTSTRAP_ADMIN_EMAIL / _PASSWORD / _NAME uma vez (ver LOCAL_SETUP.md).
   bootstrap-admin:
     email: ${APP_BOOTSTRAP_ADMIN_EMAIL:}

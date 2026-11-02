@@ -65,7 +65,10 @@ public class CartService {
 	}
 
 	Cart cartOf(Long userId) {
-		return carts.findByUserId(userId).orElseGet(() -> carts.save(new Cart(userId)));
+		return carts.findByUserId(userId).orElseGet(() -> {
+			carts.insertIfAbsent(userId);
+			return carts.findByUserId(userId).orElseThrow();
+		});
 	}
 
 	public CartView view(Long userId) {

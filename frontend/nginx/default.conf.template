@@ -1,0 +1,70 @@
+# Loja Gigaverse3D: arquivos estáticos (SPA) + proxy da API na MESMA origem (cookies de sessão e CSRF).
+# TLS fica no proxy de borda (Caddy no docker-compose.prod.yml, ou o balanceador da hospedagem).
+# Variáveis (envsubst na inicialização): API_UPSTREAM, PUBLIC_BASE_URL.
+
+server_tokens off;
+
+map $uri $gv_cache {
+    ~^/assets/   "public, max-age=31536000, immutable";
+    default      "no-cache";
+}
+
+server {
+    listen 8080;
+    server_name _;
+    root /usr/share/nginx/html;
+
+    client_max_body_size 6m;
+
+    # Cabeçalhos de segurança da loja (a API define os seus).
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; font-src 'self' data:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+    add_header Cache-Control $gv_cache always;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml text/plain application/xml;
+    gzip_min_length 1024;
+
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 60s;
+        add_header Cache-Control "no-store" always;
+    }
+
+    location /media/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    }
+
+    location = /sitemap.xml {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $http_x_forwarded_proto;
+    }
+
+    # Atuador (saúde/diagnóstico) nunca é exposto publicamente.
+    location /actuator/ { return 404; }
+
+    location = /robots.txt {
+        default_type text/plain;
+        return 200 "User-agent: *\nDisallow: /conta\nDisallow: /admin\nDisallow: /checkout\nDisallow: /carrinho\nDisallow: /redefinir-senha\n\nSitemap: ${PUBLIC_BASE_URL}/sitemap.xml\n";
+    }
+
+    location = /healthz {
+        access_log off;
+        default_type text/plain;
+        return 200 "ok\n";
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

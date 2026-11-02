@@ -17,3 +17,9 @@ app:
       register-per-ip: 10000
       forgot-per-ip: 10000
       forgot-per-email: 10000
+spring:
+  jpa:
+    properties:
+      hibernate:
+        # contagem de comandos SQL usada por QueryCountTest (verificação de N+1)
+        generate_statistics: true

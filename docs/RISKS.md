@@ -16,3 +16,4 @@
 | R12 | Retenção de dados após anonimização (pedidos com nome/endereço) divergir da orientação jurídica | Média | Médio | Proposta documentada em `PRIVACY_DATA_MAP.md`; ajuste é uma query no `PrivacyService` (D-P07) |
 | R13 | Sessões e rate limit em memória com mais de uma instância | Média (ao escalar) | Médio | Uma instância até a Fase 12; depois Spring Session JDBC/Redis |
 | R14 | Sem teste de intrusão independente | Certa | Alto | Testes automatizados de autorização/cabeçalhos/limites; contratar pentest antes de campanhas de tráfego |
+| R15 | E2E roda no banco de desenvolvimento compartilhado, só em Chromium/Edge, sem leitor de tela real | Certa | Baixo | Banco descartável por execução no CI (Fase 12); teste manual com NVDA no `GO_LIVE_CHECKLIST` (ver `TEST_REPORT.md` §5) |

@@ -49,7 +49,7 @@ export function PrivacyCard() {
       <h2 className="font-semibold">Privacidade</h2>
       <p className="mt-1 text-sm text-fg-muted">
         Veja como tratamos seus dados na{' '}
-        <Link to="/privacidade" className="text-accent hover:underline">
+        <Link to="/privacidade" className="text-accent underline underline-offset-2">
           política de privacidade
         </Link>
         . A preferência de e-mails de ofertas fica em “Dados pessoais”, acima.

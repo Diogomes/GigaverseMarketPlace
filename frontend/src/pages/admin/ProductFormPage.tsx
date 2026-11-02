@@ -39,9 +39,15 @@ const FIELDS: Array<keyof ProductFormInput> = [
   'status',
 ]
 
+const FORM_ID = 'product-form'
+
 export function ProductFormPage() {
   const { id } = useParams()
   const { data, error, isPending, refetch } = useAdminProduct(id)
+  // o <select> de categoria só pode receber o valor inicial depois que as opções existem
+  const categories = useAdminCategories()
+  if (categories.error) return <QueryError error={categories.error} onRetry={() => void categories.refetch()} />
+  if (categories.isPending) return <Loading />
   if (!id) return <ProductForm key="novo" />
   if (error instanceof ApiError && error.status === 404) return <NotFoundPage />
   if (error) return <QueryError error={error} onRetry={() => void refetch()} />
@@ -96,58 +102,62 @@ function ProductForm({ product }: { product?: AdminProduct }) {
         description="Os campos são validados aqui e novamente no servidor."
       />
       {saved && <Notice>{saved}</Notice>}
-      <form noValidate onSubmit={handleSubmit(onSubmit)} className="grid gap-6 xl:grid-cols-[1fr_22rem]">
+      {/* Imagens e estoque têm formulários próprios: o formulário do produto não pode envolvê-los (form aninhado
+          faria o "Lançar"/"Enviar imagem" recarregar a página). Os campos da coluna direita entram via atributo form. */}
+      <div className="grid gap-6 xl:grid-cols-[1fr_22rem]">
         <div className="flex flex-col gap-6">
-          <Card>
-            <h2 className="font-semibold">Informações</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div className="sm:col-span-2">
+          <form id={FORM_ID} noValidate onSubmit={handleSubmit(onSubmit)}>
+            <Card>
+              <h2 className="font-semibold">Informações</h2>
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <InputField
+                    id="name"
+                    label="Nome"
+                    error={errors.name?.message}
+                    hint={
+                      product ? `URL: /produtos/${product.slug}` : name ? `URL: /produtos/${slugify(name)}` : undefined
+                    }
+                    {...register('name')}
+                  />
+                </div>
                 <InputField
-                  id="name"
-                  label="Nome"
-                  error={errors.name?.message}
-                  hint={
-                    product ? `URL: /produtos/${product.slug}` : name ? `URL: /produtos/${slugify(name)}` : undefined
-                  }
-                  {...register('name')}
+                  id="sku"
+                  label="SKU"
+                  placeholder="GV-ART-001"
+                  error={errors.sku?.message}
+                  {...register('sku')}
                 />
+                <SelectField
+                  id="categoryId"
+                  label="Categoria"
+                  error={errors.categoryId?.message}
+                  {...register('categoryId')}
+                >
+                  <option value="">Selecione…</option>
+                  {categories.data?.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                      {c.active ? '' : ' (inativa)'}
+                    </option>
+                  ))}
+                </SelectField>
+                <div className="sm:col-span-2">
+                  <TextareaField
+                    id="description"
+                    label="Descrição"
+                    error={errors.description?.message}
+                    {...register('description')}
+                  />
+                </div>
+                {product && product.options.length > 0 && (
+                  <p className="text-xs text-fg-muted sm:col-span-2">
+                    Opções ({product.options.map((o) => o.name).join(', ')}) são mantidas ao salvar.
+                  </p>
+                )}
               </div>
-              <InputField
-                id="sku"
-                label="SKU"
-                placeholder="GV-ART-001"
-                error={errors.sku?.message}
-                {...register('sku')}
-              />
-              <SelectField
-                id="categoryId"
-                label="Categoria"
-                error={errors.categoryId?.message}
-                {...register('categoryId')}
-              >
-                <option value="">Selecione…</option>
-                {categories.data?.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                    {c.active ? '' : ' (inativa)'}
-                  </option>
-                ))}
-              </SelectField>
-              <div className="sm:col-span-2">
-                <TextareaField
-                  id="description"
-                  label="Descrição"
-                  error={errors.description?.message}
-                  {...register('description')}
-                />
-              </div>
-              {product && product.options.length > 0 && (
-                <p className="text-xs text-fg-muted sm:col-span-2">
-                  Opções ({product.options.map((o) => o.name).join(', ')}) são mantidas ao salvar.
-                </p>
-              )}
-            </div>
-          </Card>
+            </Card>
+          </form>
 
           {product ? (
             <>
@@ -181,6 +191,7 @@ function ProductForm({ product }: { product?: AdminProduct }) {
                 inputMode="decimal"
                 placeholder="189,90"
                 error={errors.price?.message}
+                form={FORM_ID}
                 {...register('price')}
               />
               <InputField
@@ -188,9 +199,10 @@ function ProductForm({ product }: { product?: AdminProduct }) {
                 label="Preço promocional (R$, opcional)"
                 inputMode="decimal"
                 error={errors.promoPrice?.message}
+                form={FORM_ID}
                 {...register('promoPrice')}
               />
-              <SelectField id="type" label="Tipo de produto" {...register('type')}>
+              <SelectField id="type" label="Tipo de produto" form={FORM_ID} {...register('type')}>
                 {Object.entries(PRODUCT_TYPE_UI).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v}
@@ -204,6 +216,7 @@ function ProductForm({ product }: { product?: AdminProduct }) {
                   type="number"
                   min={0}
                   error={errors.lowStockThreshold?.message}
+                  form={FORM_ID}
                   {...register('lowStockThreshold')}
                 />
               ) : (
@@ -213,10 +226,11 @@ function ProductForm({ product }: { product?: AdminProduct }) {
                   type="number"
                   min={1}
                   error={errors.productionDays?.message}
+                  form={FORM_ID}
                   {...register('productionDays')}
                 />
               )}
-              <SelectField id="status" label="Status" {...register('status')}>
+              <SelectField id="status" label="Status" form={FORM_ID} {...register('status')}>
                 {Object.entries(PRODUCT_STATUS_UI).map(([k, v]) => (
                   <option key={k} value={k}>
                     {v.label}
@@ -224,14 +238,19 @@ function ProductForm({ product }: { product?: AdminProduct }) {
                 ))}
               </SelectField>
               <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" className="size-4 accent-[var(--gv-primary)]" {...register('featured')} />
+                <input
+                  type="checkbox"
+                  form={FORM_ID}
+                  className="size-4 accent-[var(--gv-primary)]"
+                  {...register('featured')}
+                />
                 Destacar na página inicial
               </label>
             </div>
           </Card>
           <div className="flex flex-col gap-3">
             <ActionError message={failure} />
-            <button type="submit" className={buttonClass('primary', 'lg')} disabled={isSubmitting}>
+            <button type="submit" form={FORM_ID} className={buttonClass('primary', 'lg')} disabled={isSubmitting}>
               {isSubmitting ? 'Salvando…' : 'Salvar produto'}
             </button>
             <Link to="/admin/produtos" className={buttonClass('outline', 'lg')}>
@@ -239,7 +258,7 @@ function ProductForm({ product }: { product?: AdminProduct }) {
             </Link>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   )
 }

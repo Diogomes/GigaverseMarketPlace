@@ -26,3 +26,6 @@ dist-ssr
 # Playwright
 test-results/
 playwright-report/
+
+# Cobertura (npm run test:coverage)
+coverage/

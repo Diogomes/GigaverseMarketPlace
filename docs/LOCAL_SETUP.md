@@ -96,9 +96,11 @@ Com Postgres, backend (8080) e frontend (`npm run dev`, 5173) rodando:
 cd frontend && npm run e2e      # usa o Microsoft Edge instalado (channel msedge)
 ```
 
-Os testes criam contas `e2e-…@exemplo.com` com pedidos **cancelados** no banco de desenvolvimento (o estoque volta). Elas não podem ser apagadas enquanto tiverem pedidos; para zerar tudo use `docker compose down -v` (apaga o banco local). Nunca rode o E2E contra produção.
+Os testes criam contas `e2e-…@exemplo.com` e produtos `Peça E2E …` no banco de desenvolvimento. Os testes de administração **promovem a ADMIN** uma conta `e2e-admin-…@exemplo.com` recém-criada via `docker exec gigaverse3d-postgres-1 psql` (só aceita esse padrão de e-mail e só roda com `E2E_BASE_URL` em localhost; container configurável em `E2E_DB_CONTAINER`). Contas com pedidos não podem ser apagadas; para zerar tudo use `docker compose down -v` (apaga o banco local). Nunca rode o E2E contra produção.
 
-Se aparecer 429 durante o E2E, o limite de cadastros por IP foi atingido — reinicie o backend (o limitador fica em memória).
+O perfil `dev` eleva os limites de cadastro/login por IP (100/200 por 15 min) para a suíte caber numa janela; produção mantém 10/50. Se ainda aparecer 429, reinicie o backend (o limitador fica em memória).
+
+Cobertura: `cd backend && ./mvnw verify` gera `target/site/jacoco/index.html`; `cd frontend && npm run test:coverage` gera `coverage/`. Resultados e limitações em [`TEST_REPORT.md`](TEST_REPORT.md).
 
 ## Problemas comuns
 
