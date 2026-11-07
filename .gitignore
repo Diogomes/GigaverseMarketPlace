@@ -4,6 +4,8 @@
 !.env.example
 !.env.prod.example
 *.local
+# config da simulação de deploy (sem segredos; usada por infra/deploy/simulate.env)
+!infra/caddy/Caddyfile.local
 
 # Sistema / editores
 .DS_Store
@@ -12,8 +14,10 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 
-# Uploads locais de desenvolvimento (Fase 04)
-storage/
+# Uploads locais de desenvolvimento (Fase 04) — ancorado: não pode pegar o pacote
+# Java br.com.gigaverse3d.storage (src/**/storage/), que precisa ser versionado
+/backend/storage/
+/storage/
 
 # Logs
 *.log

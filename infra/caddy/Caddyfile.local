@@ -1,0 +1,19 @@
+# Simulação local: certificado da CA interna do Caddy (não confiável pelo navegador; use curl -k).
+{
+	local_certs
+	auto_https disable_redirects
+}
+
+{$SITE_ADDRESS} {
+	tls internal
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+	reverse_proxy web:8080
+}
+
+http://{$SITE_ADDRESS} {
+	redir https://{host}{uri} permanent
+}
