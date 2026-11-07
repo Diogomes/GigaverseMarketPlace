@@ -32,7 +32,7 @@ jobs:
           cache: maven
       # Testcontainers usa o Docker do runner (Postgres e S3Mock descartáveis)
       - run: ./mvnw -B -ntp verify
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-relatorios
@@ -102,7 +102,7 @@ jobs:
       - name: Playwright
         working-directory: frontend
         run: npm run e2e
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: failure()
         with:
           name: e2e-falhas
@@ -131,7 +131,7 @@ jobs:
         working-directory: frontend
         run: npm audit --omit=dev --audit-level=high
       - name: Vulnerabilidades (pom.xml, package-lock.json) e segredos no repositório
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scanners: vuln,secret
@@ -143,14 +143,14 @@ jobs:
           docker build -t gigaverse3d-api:ci ./backend
           docker build -t gigaverse3d-web:ci ./frontend
       - name: Vulnerabilidades da imagem da API
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gigaverse3d-api:ci
           severity: CRITICAL
           ignore-unfixed: true
           exit-code: '1'
       - name: Vulnerabilidades da imagem da loja
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: gigaverse3d-web:ci
           severity: CRITICAL
